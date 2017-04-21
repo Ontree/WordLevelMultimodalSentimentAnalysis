@@ -137,7 +137,7 @@ if 'f' in args.feature:
     model_input.append(facet_input)
     if args.rl:
         model_input.append(facet_mask)
-        facet_layer = Multiply([facet_layer, facet_mask])
+        facet_layer = Multiply()([facet_layer, facet_mask])
     unimodel_layers.append(facet_layer)
 
 if len(unimodel_layers) > 1:
