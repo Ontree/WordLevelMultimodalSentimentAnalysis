@@ -47,7 +47,7 @@ parser.add_argument('-c', '--convolution', default=0, type=int, choices=[0,1], h
 parser.add_argument('--max_segment_len', default=115, type=int, help='')
 parser.add_argument('--rl_sample_n', default=10, type=int)
 parser.add_argument('--rl_all_epoch', default=10, type=int)
-parser.add_argument('--r', '--rl', default=1, type=int, choices=[0, 1], help='1: use rl')
+parser.add_argument('-r', '--rl', default=1, type=int, choices=[0, 1], help='1: use rl')
 
 args = parser.parse_args()
 
@@ -119,7 +119,7 @@ text_input = Input(shape=(max_segment_len,), dtype='int32', name='text_input')
 text_eb_layer = Embedding(word_embedding[0].shape[0], embedding_vecor_length, input_length=max_segment_len, weights=word_embedding, name = 'text_eb_layer', trainable=False)(text_input)
 facet_input = Input(shape=(max_segment_len, facet_train.shape[2]), name='facet_input')
 covarep_input = Input(shape=(max_segment_len, covarep_train.shape[2]), name='covarep_input')
-facet_mask = Input(shape=(max_segment_len))
+facet_mask = Input(shape=(max_segment_len,))
 # convolutional layers
 if args.convolution:
     facet_layer = Conv1D(facet_train.shape[2], 3, padding='same', activation='tanh')(facet_input)
