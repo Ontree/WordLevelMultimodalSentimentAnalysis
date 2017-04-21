@@ -11,6 +11,7 @@ from keras.layers import Input, Flatten, Activation, Permute, RepeatVector, Lamb
 from keras.layers import Dense
 from keras.layers import LSTM, GRU
 from keras.layers import Dropout
+from keras.layers.merge import Multiply
 from keras.layers.embeddings import Embedding
 from keras.layers.convolutional import Conv1D
 from keras.preprocessing import sequence
@@ -24,6 +25,7 @@ import keras.backend as K
 import argparse
 from keras.layers.wrappers import TimeDistributed
 import cPickle as pickle
+import controller
 
 
 config = tf.ConfigProto()
@@ -43,6 +45,9 @@ parser.add_argument('-a', '--attention', default=0, type=int, choices=[0,1], hel
 parser.add_argument('-s', '--feature_selection', default=0, type=int, choices=[0,1], help='whether to use feature_selection')
 parser.add_argument('-c', '--convolution', default=0, type=int, choices=[0,1], help='whether to use convolutional layer on covarep and facet')
 parser.add_argument('--max_segment_len', default=115, type=int, help='')
+parser.add_argument('--rl_sample_n', default=10, type=int)
+parser.add_argument('--rl_all_epoch', default=10, type=int)
+parser.add_argument('-r', '--rl', default=1, type=int, choices=[0, 1], help='1: use rl')
 
 args = parser.parse_args()
 
@@ -78,6 +83,8 @@ text_test = test['text']
 y_train = train['label']
 y_test = test['label']
 
+train_n = train['text'].shape[0]
+test_n = test['text'].shape[0]
 facet_train_max = np.max(np.max(np.abs(facet_train ), axis =0),axis=0)
 facet_train_max[facet_train_max==0] = 1
 #covarep_train_max =  np.max(np.max(np.abs(covarep_train), axis =0),axis=0)
@@ -107,6 +114,7 @@ if 'f' in args.feature:
     X_test.append(facet_test)
 
 
+
 text_input = Input(shape=(max_segment_len,), dtype='int32', name='text_input')
 text_eb_layer = Embedding(word_embedding[0].shape[0], embedding_vecor_length, input_length=max_segment_len, weights=word_embedding, name = 'text_eb_layer', trainable=False)(text_input)
 facet_input = Input(shape=(max_segment_len, facet_train.shape[2]), name='facet_input')
@@ -126,12 +134,15 @@ if 'c' in args.feature:
     unimodel_layers.append(covarep_layer)
     model_input.append(covarep_input)
 if 'f' in args.feature:
-    unimodel_layers.append(facet_layer)
     model_input.append(facet_input)
+    unimodel_layers.append(facet_layer)
+
 if len(unimodel_layers) > 1:
     merge_input = merge(unimodel_layers,  mode='concat')
 else:
     merge_input = text_eb_layer
+
+
 
 
 if args.attention:
@@ -160,6 +171,14 @@ adam = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08) #deca
 #sgd = SGD(lr=0.0005, decay=1e-6, momentum=0.9, nesterov=True)
 model.compile(loss='mae', optimizer=adam)
 print(model.summary())
+
+
+facet_mask_train = np.zeros([train_n, max_segment_len])
+facet_mask_test = np.zeros([test_n, max_segment_len])
+if args.rl:
+    X_train_ori, y_train_ori = X_train, y_train
+    X_train = X_train_ori * facet_mask_train[:, :, np.newaxis]
+    X_test = X_test_ori * facet_mask_test[:, :, np.newaxis]
 model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
 model.load_weights(weights_path)
 
