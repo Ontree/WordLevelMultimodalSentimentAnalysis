@@ -114,17 +114,19 @@ covarep_input = Input(shape=(max_segment_len, covarep_train.shape[2]), name='cov
 
 # convolutional layers
 if args.convolution:
-    facet_input = Conv1D(facet_train.shape[2], 3, padding='same', activation='tanh')(facet_input)
-    covarep_input = Conv1D(covarep_train.shape[2], 3, padding='same', activation='tanh')(covarep_input)
-
+    facet_layer = Conv1D(facet_train.shape[2], 3, padding='same', activation='tanh')(facet_input)
+    covarep_layer = Conv1D(covarep_train.shape[2], 3, padding='same', activation='tanh')(covarep_input)
+else:
+    facet_layer = facet_input
+    covarep_layer = covarep_input
 
 unimodel_layers = [text_eb_layer]
 model_input = [text_input]
 if 'c' in args.feature:
-    unimodel_layers.append(covarep_input)
+    unimodel_layers.append(covarep_layer)
     model_input.append(covarep_input)
 if 'f' in args.feature:
-    unimodel_layers.append(facet_input)
+    unimodel_layers.append(facet_layer)
     model_input.append(facet_input)
 if len(unimodel_layers) > 1:
     merge_input = merge(unimodel_layers,  mode='concat')
