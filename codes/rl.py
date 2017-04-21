@@ -173,7 +173,8 @@ model.compile(loss='mae', optimizer=adam)
 print(model.summary())
 
 
-facet_mask = np.zeros(max_segment_len)
+facet_mask_train = np.zeros([train_n, max_segment_len])
+facet_mask_test = np.zeros([test_n, max_segment_len])
 if args.rl:
     X_train_ori, y_train_ori = X_train, y_train
     X_train = X_train_ori * facet_mask[:, :, np.newaxis]
