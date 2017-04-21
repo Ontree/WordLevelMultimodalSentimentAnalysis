@@ -25,7 +25,7 @@ import keras.backend as K
 import argparse
 from keras.layers.wrappers import TimeDistributed
 import cPickle as pickle
-#import controller
+import controller
 
 
 config = tf.ConfigProto()
@@ -177,8 +177,8 @@ facet_mask_train = np.zeros([train_n, max_segment_len])
 facet_mask_test = np.zeros([test_n, max_segment_len])
 if args.rl:
     X_train_ori, y_train_ori = X_train, y_train
-    X_train = X_train_ori * facet_mask[:, :, np.newaxis]
-    X_test = X_test_ori * facet_mask[:, :, np.newaxis]
+    X_train = X_train_ori * facet_mask_train[:, :, np.newaxis]
+    X_test = X_test_ori * facet_mask_test[:, :, np.newaxis]
 model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
 model.load_weights(weights_path)
 
