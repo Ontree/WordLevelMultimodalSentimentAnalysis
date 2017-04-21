@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import tools.data_loader as loader
 import numpy as np
 np.random.seed(0)
@@ -61,7 +61,7 @@ train, test = loader.load_word_level_features(max_segment_len, tr_split)
 
 feature_str = ''
 if args.feature_selection:
-    with open('/usr0/home/minghai1/777/preprocess/fs_mask.pkl') as f:
+    with open('/usr0/home/minghai1/multimodal/preprocess/fs_mask.pkl') as f:
         [covarep_ix, facet_ix] = pickle.load(f)
     facet_train = train['facet'][:,:,facet_ix]
     facet_test = test['facet'][:,:,facet_ix]
@@ -115,7 +115,7 @@ covarep_input = Input(shape=(max_segment_len, covarep_train.shape[2]), name='cov
 # convolutional layers
 if args.convolution:
     facet_input = Conv1D(facet_train.shape[2], 3, padding='same', activation='tanh')(facet_input)
-    covarep_input = Conv1D(facet_train.shape[2], 3, padding='same', activation='tanh')(covarep_input)
+    covarep_input = Conv1D(covarep_train.shape[2], 3, padding='same', activation='tanh')(covarep_input)
 
 
 unimodel_layers = [text_eb_layer]
