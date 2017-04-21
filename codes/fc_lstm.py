@@ -9,10 +9,9 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 np.random.seed(0)
-torch.manual_seed(0)
-torch.manual_seed(args.seed)
+
 parser = argparse.ArgumentParser(description='PyTorch FC-LSTM Model for Word Level Sentiment Analysis')
-parser.add_argument('--dropout', type=float, default=0.2,
+parser.add_argument('--dropout', type=float, default=0.5,
                     help='dropout applied to layers (0 = no dropout)')
 parser.add_argument('--cuda', action='store_true',
                     help='use CUDA')
@@ -20,7 +19,17 @@ parser.add_argument('--max_segment_len', default=115, type=int, help='')
 parser.add_argument('-s', '--feature_selection', default=0, type=int, choices=[0,1], help='whether to use feature_selection')
 parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
+parser.add_argument('--seed', type=int, default=1111,
+                    help='random seed')
 args = parser.parse_args()
+torch.manual_seed(args.seed)
+if torch.cuda.is_available():
+    if not args.cuda:
+        print("WARNING: You have a CUDA device, so you should probably run with --cuda")
+    else:
+        torch.cuda.manual_seed(args.seed)
+
+
 #----------lOAD DATA-------
 tr_split = 2.0/3                        # fixed. 62 training & validation, 31 test
 val_split = 0.1514                      # fixed. 52 training 10 validation
@@ -56,15 +65,17 @@ facet_train_max[facet_train_max==0] = 1
 #covarep_train_max[covarep_train_max==0] = 1
 
 facet_train = facet_train / facet_train_max
-#covarep_train = covarep_train / covarep_train_max
 facet_test = facet_test / facet_train_max
-#covarep_test = covarep_test / covarep_train_max
-X_train, X_test = [text_train], [text_test]
-X_train.append(covarep_train)
-X_test.append(covarep_test)
-X_train.append(facet_train)
-X_test.append(facet_test)
+covarep_train = covarep_train / covarep_train_max
+covarep_test = covarep_test / covarep_train_max
+# X_train, X_test = [text_train], [text_test]
+# X_train.append(covarep_train)
+# X_test.append(covarep_test)
+# X_train.append(facet_train)
+# X_test.append(facet_test)
 #--------END LOAD DATA
+
+
 if torch.cuda.is_available():
     if not args.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
@@ -77,3 +88,7 @@ def repackage_hidden(h):
         return Variable(h.data)
     else:
         return tuple(repackage_hidden(v) for v in h)
+
+
+
+if __name__ == '__main__':
