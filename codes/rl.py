@@ -119,7 +119,7 @@ text_input = Input(shape=(max_segment_len,), dtype='int32', name='text_input')
 text_eb_layer = Embedding(word_embedding[0].shape[0], embedding_vecor_length, input_length=max_segment_len, weights=word_embedding, name = 'text_eb_layer', trainable=False)(text_input)
 facet_input = Input(shape=(max_segment_len, facet_train.shape[2]), name='facet_input')
 covarep_input = Input(shape=(max_segment_len, covarep_train.shape[2]), name='covarep_input')
-facet_mask = Input(shape=(max_segment_len,))
+
 # convolutional layers
 if args.convolution:
     facet_layer = Conv1D(facet_train.shape[2], 3, padding='same', activation='tanh')(facet_input)
@@ -135,9 +135,6 @@ if 'c' in args.feature:
     model_input.append(covarep_input)
 if 'f' in args.feature:
     model_input.append(facet_input)
-    if args.rl:
-        model_input.append(facet_mask)
-        facet_layer = Multiply()([facet_layer, facet_mask])
     unimodel_layers.append(facet_layer)
 
 if len(unimodel_layers) > 1:
@@ -175,10 +172,12 @@ adam = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08) #deca
 model.compile(loss='mae', optimizer=adam)
 print(model.summary())
 
+
+facet_mask = np.zeros(max_segment_len)
 if args.rl:
     X_train_ori, y_train_ori = X_train, y_train
-    X_train = X_train_ori + [np.zeros([train_n, max_segment_len])] 
-    X_test = X_test_ori + [np.zeros([test_n, max_segment_len])] 
+    X_train = X_train_ori * facet_mask[:, :, np.newaxis]
+    X_test = X_test_ori * facet_mask[:, :, np.newaxis]
 model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
 model.load_weights(weights_path)
 
