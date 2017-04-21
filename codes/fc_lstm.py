@@ -38,7 +38,7 @@ embedding_vecor_length = 300            # fixed. use glove 300d
 max_segment_len = args.max_segment_len  #115                   # fixed for MOSI. The max length of a segment in MOSI dataset is 114
 end_to_end = True                       # fixed
 lstm_units = 64
-word_embedding = [loader.load_word_embedding()] if use_pretrained_word_embedding else None
+word_embedding = loader.load_word_embedding()
 train, test = loader.load_word_level_features(max_segment_len, tr_split)
 feature_str = ''
 if args.feature_selection:
@@ -61,13 +61,18 @@ y_test = test['label']
 
 facet_train_max = np.max(np.max(np.abs(facet_train ), axis =0),axis=0)
 facet_train_max[facet_train_max==0] = 1
-#covarep_train_max =  np.max(np.max(np.abs(covarep_train), axis =0),axis=0)
-#covarep_train_max[covarep_train_max==0] = 1
+covarep_train_max =  np.max(np.max(np.abs(covarep_train), axis =0),axis=0)
+covarep_train_max[covarep_train_max==0] = 1
 
 facet_train = facet_train / facet_train_max
 facet_test = facet_test / facet_train_max
 covarep_train = covarep_train / covarep_train_max
 covarep_test = covarep_test / covarep_train_max
+
+for i in range(text_train.shape(0)):
+    for j in range(text_train.shape(1)):
+        text_train[i][j] = word_embedding[text_train[i][j]]
+print text_train.shape
 # X_train, X_test = [text_train], [text_test]
 # X_train.append(covarep_train)
 # X_test.append(covarep_test)
