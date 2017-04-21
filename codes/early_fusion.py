@@ -12,6 +12,7 @@ from keras.layers import Dense
 from keras.layers import LSTM, GRU
 from keras.layers import Dropout
 from keras.layers.embeddings import Embedding
+from keras.layers.convolutional import Conv1D
 from keras.preprocessing import sequence
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras import optimizers
@@ -37,10 +38,12 @@ parser.add_argument('--train_epoch', default=1000, type=int)
 parser.add_argument('--train_patience', default=100, type=int)
 parser.add_argument('--batch_size', default=128, type=int)
 parser.add_argument('--pretrain', default=0, type=int, choices=[0, 1], help='0: use all the modalities; 1: use only text, other modalities are set as 0')
-parser.add_argument('-f', '--feature', default=['t', 'c'], type=list, help='what features to use. t: text; c: covarep; f: facet. default is tc')
+parser.add_argument('-f', '--feature', default=[], type=list, help='what features to use besides text. c: covarep; f: facet. default is null')
 parser.add_argument('-a', '--attention', default=0, type=int, choices=[0,1], help='whether to use attention model. 1: use; 0: not. default is 0')
 parser.add_argument('-s', '--feature_selection', default=0, type=int, choices=[0,1], help='whether to use feature_selection')
+parser.add_argument('-c', '--convolution', default=0, type=int, choices=[0,1], help='whether to use convolutional layer on covarep and facet')
 parser.add_argument('--max_segment_len', default=115, type=int, help='')
+
 args = parser.parse_args()
 
 
@@ -108,6 +111,13 @@ text_input = Input(shape=(max_segment_len,), dtype='int32', name='text_input')
 text_eb_layer = Embedding(word_embedding[0].shape[0], embedding_vecor_length, input_length=max_segment_len, weights=word_embedding, name = 'text_eb_layer', trainable=False)(text_input)
 facet_input = Input(shape=(max_segment_len, facet_train.shape[2]), name='facet_input')
 covarep_input = Input(shape=(max_segment_len, covarep_train.shape[2]), name='covarep_input')
+
+# convolutional layers
+if args.convolution:
+    facet_input = Conv1D(facet_train.shape[2], 3, padding='same', activation='tanh')(facet_input)
+    covarep_input = Conv1D(facet_train.shape[2], 3, padding='same', activation='tanh')(covarep_input)
+
+
 unimodel_layers = [text_eb_layer]
 model_input = [text_input]
 if 'c' in args.feature:
