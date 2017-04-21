@@ -68,11 +68,11 @@ facet_train = facet_train / facet_train_max
 facet_test = facet_test / facet_train_max
 covarep_train = covarep_train / covarep_train_max
 covarep_test = covarep_test / covarep_train_max
-
-for i in range(text_train.shape(0)):
-    for j in range(text_train.shape(1)):
-        text_train[i][j] = word_embedding[text_train[i][j]]
-print text_train.shape
+embedding_train = np.zeros((text_train.shape[0],text_train.shape[1],len(word_embedding[0])))
+for i in range(text_train.shape[0]):
+    for j in range(text_train.shape[1]):
+        embedding_train[i][j] = word_embedding[text_train[i][j]]
+print embedding_train.shape
 # X_train, X_test = [text_train], [text_test]
 # X_train.append(covarep_train)
 # X_test.append(covarep_test)

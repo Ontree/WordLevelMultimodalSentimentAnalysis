@@ -7,7 +7,7 @@ import cPickle
 import h5py
 
 
-data_path = '../data/'
+data_path = '/usr0/home/minghai1/multimodal/data/'
 dataset_path = data_path + 'mosi/'
 
 truth_path = dataset_path + 'Meta_data/boundaries_sentimentint_avg.csv'
