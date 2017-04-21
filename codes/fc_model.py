@@ -12,5 +12,5 @@ class FCLSTM(nn.Module):
     def init_weights(self):
 
     def forward(self,input):
-        
+
     def init_hidden(self):
