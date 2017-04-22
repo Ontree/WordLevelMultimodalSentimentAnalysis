@@ -4,6 +4,9 @@ import math
 class FCLSTM(nn.Module):
     def __init__(self, seq_len, text_size, visual_size, acc_size, text_hidden_size, visual_hidden_size, acc_hidden_size, batch_size, nlayers, dropout=0.5):
         super(FCLSTM, self).__init__()
+        self.text_hidden_size = text_hidden_size
+        self.visual_hidden_size = visual_hidden_size
+        self.acc_hidden_size = acc_hidden_size
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.drop = nn.Dropout(dropout)
@@ -29,9 +32,9 @@ class FCLSTM(nn.Module):
         t_input = input[0]
         v_input = input[1]
         a_input = input[2]
-        hti = self.init_hidden(self.batch_size)
-        hvi = self.init_hidden(self.batch_size)
-        hai = self.init_hidden(self.batch_size)
+        hti = self.init_hidden(self.batch_size,self.text_hidden_size)
+        hvi = self.init_hidden(self.batch_size,self.visual_hidden_size)
+        hai = self.init_hidden(self.batch_size,self.acc_hidden_size)
         hti_feature = hti[0][-1, :, :]
         hti_feature = hti_feature.unsqueeze(1)
         hvi_feature = hvi[0][-1, :, :]
@@ -64,8 +67,8 @@ class FCLSTM(nn.Module):
         hidden_feature = self.drop(torch.cat((hti,hvi,hai), 1))
         output = self.decoder(hidden_feature)
         return output
-    def init_hidden(self,batch_size):
+    def init_hidden(self,batch_size,hidden_size):
         weight = next(self.parameters()).data
-        return (Variable(weight.new(self.nlayers, batch_size, self.hidden_size).zero_()),
-                    Variable(weight.new(self.nlayers, batch_size, self.hidden_size).zero_()))
+        return (Variable(weight.new(self.nlayers, batch_size, hidden_size).zero_()),
+                    Variable(weight.new(self.nlayers, batch_size, hidden_size).zero_()))
 
