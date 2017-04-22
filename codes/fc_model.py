@@ -3,6 +3,7 @@ from torch.autograd import Variable
 
 class FCLSTM(nn.Module):
     def __init__(self, seq_len, text_size, visual_size, acc_size, hidden_size, batch_size, nlayers, dropout=0.5):
+        super(FCLSTM, self).__init__()
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.hidden_size = hidden_size
@@ -32,13 +33,13 @@ class FCLSTM(nn.Module):
         for i in range(self.seq_len):
             it_input = t_input[:,i,:].contiguous()
             it_input = it_input.unsqueeze(1)
-            it_input = torch.cat((it_input,hvi_feature,hai_feature),2)
+            it_input = self.drop(torch.cat((it_input,hvi_feature,hai_feature),2))
             iv_input = v_input[:, i, :].contiguous()
             iv_input = iv_input.unsqueeze(1)
-            iv_input = torch.cat((iv_input,hti_feature,hai_feature),2)
+            iv_input = self.drop(torch.cat((iv_input,hti_feature,hai_feature),2))
             ia_input = a_input[:, i, :].contiguous()
             ia_input = ia_input.unsqueeze(1)
-            ia_input = torch.cat((ia_input,hti_feature,hvi_feature),2)
+            ia_input = self.drop(torch.cat((ia_input,hti_feature,hvi_feature),2))
             # concatenate input with features
             _, hti = self.TLSTM(it_input, hti)
             _, hvi = self.VLSTM(iv_input,hvi)
@@ -52,11 +53,11 @@ class FCLSTM(nn.Module):
         hti = hti[0][-1,:,:]
         hvi = hvi[0][-1,:,:]
         hai = hai[0][-1,:,:]
-        hidden_feature = torch.cat((hti,hvi,hai), 1)
+        hidden_feature = self.drop(torch.cat((hti,hvi,hai), 1))
         output = self.decoder(hidden_feature)
         return output
     def init_hidden(self,batch_size):
         weight = next(self.parameters()).data
-            return (Variable(weight.new(self.nlayers, batch_size, self.hidden_size).zero_()),
+        return (Variable(weight.new(self.nlayers, batch_size, self.hidden_size).zero_()),
                     Variable(weight.new(self.nlayers, batch_size, self.hidden_size).zero_()))
 
