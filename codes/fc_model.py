@@ -9,9 +9,10 @@ class FCLSTM(nn.Module):
         self.hidden_size = hidden_size
         self.drop = nn.Dropout(dropout)
         self.decoder = nn.Linear(3*hidden_size, 1)
-        self.TLSTM = nn.LSTM(text_size+2*hidden_size, hidden_size, nlayers, dropout = dropout)
-        self.VLSTM = nn.LSTM(visual_size+2*hidden_size, hidden_size, nlayers, dropout=dropout)
-        self.ALSTM = nn.LSTM(acc_size+2*hidden_size, hidden_size, nlayers, dropout=dropout)
+        self.nlayers = nlayers
+        self.TLSTM = nn.LSTM(text_size+2*hidden_size, hidden_size, nlayers, dropout = dropout, batch_first = True)
+        self.VLSTM = nn.LSTM(visual_size+2*hidden_size, hidden_size, nlayers, dropout=dropout, batch_first = True)
+        self.ALSTM = nn.LSTM(acc_size+2*hidden_size, hidden_size, nlayers, dropout=dropout, batch_first = True)
         self.init_weights()
     def xavier_normal(self, tensor, gain=1):
         if isinstance(tensor, Variable):

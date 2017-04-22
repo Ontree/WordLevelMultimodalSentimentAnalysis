@@ -161,8 +161,8 @@ best_val_loss = None
 try:
     for epoch in range(1, args.epochs+1):
         epoch_start_time = time.time()
-        train_iterations = floor(len(embedding_train) / batch_size)
-        valid_iterations = floor(len(embedding_valid) / batch_size)
+        train_iterations = int(floor(len(embedding_train) / batch_size))
+        valid_iterations = int(floor(len(embedding_valid) / batch_size))
         train(train_iterations,lr,epoch)
         val_loss = evaluate(valid_iterations)
         print('-' * 89)
