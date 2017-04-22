@@ -34,6 +34,8 @@ parser.add_argument('--log-interval', type=int, default=5, metavar='N',
                     help='report interval')
 parser.add_argument('--lr', type=float, default=0.01,
                     help='initial learning rate')
+parser.add_argument('--save', type=str,  default='fcmodel.pt',
+                    help='path to save the final model')
 args = parser.parse_args()
 torch.manual_seed(args.seed)
 if torch.cuda.is_available():
@@ -138,7 +140,7 @@ def repackage_hidden(h):
     else:
         return tuple(repackage_hidden(v) for v in h)
 def get_batch(t_data,v_data,a_data,y,ix,batch_size,evaluation = False):
-    return [[Variable(t_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation),Variable(v_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation),Variable(a_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation)],Variable(y[ix*batch_size:(ix+1)*batch_size])]
+    return [[Variable(t_data[ix*batch_size:(ix+1)*batch_size].cuda(),volatile=evaluation),Variable(v_data[ix*batch_size:(ix+1)*batch_size].cuda(),volatile=evaluation),Variable(a_data[ix*batch_size:(ix+1)*batch_size].cuda(),volatile=evaluation)],Variable(y[ix*batch_size:(ix+1)*batch_size].cuda())]
 
 def evaluate(iterations):
     model.eval()
@@ -166,7 +168,7 @@ def train(iterations,lr,epoch):
         if i % args.log_interval == 0 and i > 0:
             cur_loss = total_loss[0] / args.log_interval
             elapsed = time.time() - start_time
-            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
+            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.4f} | ms/batch {:5.2f} | '
                     'loss {:5.2f}'.format(
                 epoch, i, iterations, lr,
                 elapsed * 1000 / args.log_interval, cur_loss))
