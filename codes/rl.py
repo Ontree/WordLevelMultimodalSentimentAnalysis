@@ -40,13 +40,13 @@ parser.add_argument('--train_epoch', default=1000, type=int)
 parser.add_argument('--train_patience', default=100, type=int)
 parser.add_argument('--batch_size', default=128, type=int)
 parser.add_argument('--pretrain', default=0, type=int, choices=[0, 1], help='0: use all the modalities; 1: use only text, other modalities are set as 0')
-parser.add_argument('-f', '--feature', default=[], type=list, help='what features to use besides text. c: covarep; f: facet. default is null')
-parser.add_argument('-a', '--attention', default=0, type=int, choices=[0,1], help='whether to use attention model. 1: use; 0: not. default is 0')
-parser.add_argument('-s', '--feature_selection', default=0, type=int, choices=[0,1], help='whether to use feature_selection')
+parser.add_argument('-f', '--feature', default=['f','c'], type=list, help='what features to use besides text. c: covarep; f: facet. default is null')
+parser.add_argument('-a', '--attention', default=1, type=int, choices=[0,1], help='whether to use attention model. 1: use; 0: not. default is 0')
+parser.add_argument('-s', '--feature_selection', default=1, type=int, choices=[0,1], help='whether to use feature_selection')
 parser.add_argument('-c', '--convolution', default=0, type=int, choices=[0,1], help='whether to use convolutional layer on covarep and facet')
 parser.add_argument('--max_segment_len', default=115, type=int, help='')
 parser.add_argument('--rl_sample_n', default=10, type=int)
-parser.add_argument('--rl_all_epoch', default=10, type=int)
+parser.add_argument('--rl_all_epoch', default=100, type=int)
 parser.add_argument('-r', '--rl', default=1, type=int, choices=[0, 1], help='1: use rl')
 
 args = parser.parse_args()
@@ -114,10 +114,10 @@ if 'f' in args.feature:
     X_test.append(facet_test)
 
 
-
+facet_dim = facet_train.shape[2]
 text_input = Input(shape=(max_segment_len,), dtype='int32', name='text_input')
 text_eb_layer = Embedding(word_embedding[0].shape[0], embedding_vecor_length, input_length=max_segment_len, weights=word_embedding, name = 'text_eb_layer', trainable=False)(text_input)
-facet_input = Input(shape=(max_segment_len, facet_train.shape[2]), name='facet_input')
+facet_input = Input(shape=(max_segment_len, facet_dim), name='facet_input')
 covarep_input = Input(shape=(max_segment_len, covarep_train.shape[2]), name='covarep_input')
 
 # convolutional layers
@@ -160,30 +160,112 @@ else:
     sent_representation = LSTM(64, name = 'lstm_layer', trainable=end_to_end)(merge_input)
 
 output_layer_1 = Dense(1, name = 'dense_layer', W_regularizer=l2(0.01))(sent_representation)
-model = Model(model_input, output_layer_1)
+
 
 
 callbacks = [
     EarlyStopping(monitor='val_loss', patience=args.train_patience, verbose=0),
-    ModelCheckpoint(weights_path, monitor='val_loss', save_best_only=True, verbose=0),
+    #ModelCheckpoint(weights_path, monitor='val_loss', save_best_only=True, verbose=0),
 ]
-adam = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08) #decay=0.999)
+
 #sgd = SGD(lr=0.0005, decay=1e-6, momentum=0.9, nesterov=True)
-model.compile(loss='mae', optimizer=adam)
+model = Model(model_input, output_layer_1)
+adam_model = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+model.compile(loss='mae', optimizer=adam_model)
 print(model.summary())
 
 
-facet_mask_train = np.zeros([train_n, max_segment_len])
-facet_mask_test = np.zeros([test_n, max_segment_len])
 if args.rl and 'f' in args.feature:
+    min_loss = 99999
     X_train_ori, X_test_ori = X_train, X_test
-    X_train = X_train_ori[:-1] + [X_train_ori[-1] * facet_mask_train[:, :, np.newaxis]]
-    X_test = X_test_ori[:-1] + [X_test_ori[-1] * facet_mask_test[:, :, np.newaxis]]
-model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
-model.load_weights(weights_path)
+    f_controller =  controller.visual_controller(facet_dim)
+    adam_controller = optimizers.Adam(lr=0.01, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+    f_controller.compile(loss=controller.my_loss, optimizer=adam_controller)
+
+    facet_train = X_train_ori[-1]
+    facet_train_2d = np.reshape(facet_train, [-1, facet_train.shape[-1]])
+    base_loss = -999
+    for i in range(args.rl_all_epoch):
+        facet_train_mask_p = f_controller.predict(facet_train_2d)
+        facet_controller_train_X = [] 
+        facet_controller_train_y = []
+        sample_losses = []
+        for j in range(args.rl_sample_n):
+            facet_mask_train = []
+            facet_controller_train_y_part = []
+            for k in range(facet_train_mask_p.shape[0]):
+                if i == 0:
+                    p_0 = 0.5
+                else:
+                    p_0 = facet_train_mask_p[k, 0]
+                rand = np.random.random()
+                if sum(facet_train_2d[k]) != 0:     
+                    facet_controller_train_X.append(facet_train_2d[k])     
+                    if rand < p_0:
+                        facet_mask_train.append(0)
+                        facet_controller_train_y_part.append([1, 0])
+                    else:
+                        facet_mask_train.append(1)
+                        facet_controller_train_y_part.append([0, 1])
+                else:
+                    facet_mask_train.append(0)
+            facet_mask_train=np.array(facet_mask_train)
+            facet_mask_train.shape = (-1, max_segment_len, 1)
+            X_train = X_train_ori[:-1] + [X_train_ori[-1] * facet_mask_train]#[:, :, np.newaxis]]
+            #X_test = X_test_ori[:-1] + [X_test_ori[-1] * facet_mask_test[:, :, np.newaxis]]
+            model = Model(model_input, output_layer_1)
+            model.compile(loss='mae', optimizer=adam_model)
+            history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
+            #history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=3, batch_size=args.batch_size, callbacks=callbacks)
+            loss = min(history.history['val_loss'])
+            if min_loss > loss:
+                min_loss = loss
+                model.save_weights("../weights/rl_model.h5")
+                controller.save_weights('../weights/controller.h5')
+            sample_losses.append(loss)
+            if base_loss == -999:
+                base_loss = loss
+            facet_controller_train_y_part = np.array(facet_controller_train_y_part)
+            facet_controller_train_y_part = facet_controller_train_y_part * (loss - base_loss)
+            facet_controller_train_y.append(facet_controller_train_y_part)
+        sample_loss_mean = np.mean(sample_losses)
+        base_loss = 0.2*base_loss + (1-0.2)*sample_loss_mean
+        facet_controller_train_y = np.concatenate(facet_controller_train_y)
+        facet_controller_train_X = np.array(facet_controller_train_X)
+        f_controller.fit(facet_controller_train_X, facet_controller_train_y, nb_epoch=50)#, batch_size=1000)
+    '''
+    for i in range(100000):
+        f_controller.fit(facet_controller_train_X, facet_controller_train_y, nb_epoch=1, batch_size=4000)
+        aaa = np.min(f_controller.predict(facet_controller_train_X))
+        print aaa, np.log(aaa)
+    '''
+    facet_test_2d = np.reshape(facet_test, [-1, facet_test.shape[-1]])
+    facet_test_mask_p = f_controller.predict(facet_test_2d)
+    facet_mask_test = []
+    for k in range(facet_test_mask_p.shape[0]):
+        p_0 = facet_test_mask_p[k, 0]
+        if p_0 >= 0.5:
+            facet_mask_test.append(0)
+        else:
+            facet_mask_test.append(1)
+
+        '''
+        rand = np.random.random()
+        if sum(facet_test_2d[k]) != 0:     
+            if rand < p_0:
+                facet_mask_test.append(0)
+            else:
+                facet_mask_test.append(1)
+        else:
+            facet_mask_test.append(0)
+        '''
+
+    facet_mask_test=np.array(facet_mask_test)
+    facet_mask_test.shape = (-1, max_segment_len, 1)
+    X_test = X_test_ori[:-1] + [X_test_ori[-1] * facet_mask_test]
 
 # Final evaluation of the model
-# model.load_weights(weights_path)
+model.load_weights(weights_path)
 mae = model.evaluate(X_test, y_test, verbose=0)
 predictions = model.predict(X_test)
 predictions = predictions.reshape(-1,)
