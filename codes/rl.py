@@ -28,6 +28,37 @@ import cPickle as pickle
 import controller
 
 
+
+def get_rl_x_test(X_test_ori, f_controller, max_segment_len):
+    facet_test = X_test_ori[-1]
+    facet_test_2d = np.reshape(facet_test, [-1, facet_test.shape[-1]])
+    facet_test_mask_p = f_controller.predict(facet_test_2d)
+    facet_mask_test = []
+    for k in range(facet_test_mask_p.shape[0]):
+        p_0 = facet_test_mask_p[k, 0]
+        if p_0 >= 0.5:
+            facet_mask_test.append(0)
+        else:
+            facet_mask_test.append(1)
+    facet_mask_test=np.array(facet_mask_test)
+    facet_mask_test.shape = (-1, max_segment_len, 1)
+    X_test = X_test_ori[:-1] + [X_test_ori[-1] * facet_mask_test]
+    return X_test
+
+
+def reset_weights(model):
+    session = K.get_session()
+    for layer in model.layers:
+        if isinstance(layer, Dense) or isinstance(layer, LSTM):
+            old = layer.get_weights()
+            for w in layer._trainable_weights:
+                w.initializer.run(session=session)
+            print(np.array_equal(old, layer.get_weights())," after initializer run")
+        else:
+            pass
+            #print(layer, "not reinitialized")
+
+
 config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
 sess = tf.Session(config=config)
@@ -97,7 +128,7 @@ facet_test = facet_test / facet_train_max
 
 
 weights_folder_path = '../weights/'
-weights_path = weights_folder_path + ''.join(sorted(args.feature)) + ("_attention" if args.attention else "") +  feature_str +".h5"
+weights_path = weights_folder_path + ''.join(sorted(args.feature)) + ("_attention" if args.attention else "") +  feature_str +"-rl.h5"
 
 
 if args.pretrain:
@@ -165,7 +196,7 @@ output_layer_1 = Dense(1, name = 'dense_layer', W_regularizer=l2(0.01))(sent_rep
 
 callbacks = [
     EarlyStopping(monitor='val_loss', patience=args.train_patience, verbose=0),
-    #ModelCheckpoint(weights_path, monitor='val_loss', save_best_only=True, verbose=0),
+    ModelCheckpoint(weights_path, monitor='val_loss', save_best_only=True, verbose=0),
 ]
 
 #sgd = SGD(lr=0.0005, decay=1e-6, momentum=0.9, nesterov=True)
@@ -179,7 +210,7 @@ if args.rl and 'f' in args.feature:
     min_loss = 99999
     X_train_ori, X_test_ori = X_train, X_test
     f_controller =  controller.visual_controller(facet_dim)
-    adam_controller = optimizers.Adam(lr=0.01, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+    adam_controller = optimizers.Adam(lr=0.05, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
     f_controller.compile(loss=controller.my_loss, optimizer=adam_controller)
 
     facet_train = X_train_ori[-1]
@@ -213,15 +244,21 @@ if args.rl and 'f' in args.feature:
             facet_mask_train.shape = (-1, max_segment_len, 1)
             X_train = X_train_ori[:-1] + [X_train_ori[-1] * facet_mask_train]#[:, :, np.newaxis]]
             #X_test = X_test_ori[:-1] + [X_test_ori[-1] * facet_mask_test[:, :, np.newaxis]]
-            model = Model(model_input, output_layer_1)
+            reset_weights(model)
+            adam_model = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
             model.compile(loss='mae', optimizer=adam_model)
-            history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
-            #history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=3, batch_size=args.batch_size, callbacks=callbacks)
+            #history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
+            history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=3, batch_size=args.batch_size, callbacks=callbacks)
             loss = min(history.history['val_loss'])
             if min_loss > loss:
                 min_loss = loss
+                model.load_weights(weights_path)
                 model.save_weights("../weights/rl_model.h5")
-                controller.save_weights('../weights/controller.h5')
+                f_controller.save_weights('../weights/controller.h5')
+                X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
+                mae = model.evaluate(X_test, y_test, verbose=0)
+                with open('mae.txt', 'a') as f:
+                    f.write(str(loss) + '  ' + str(mae)+'\n')
             sample_losses.append(loss)
             if base_loss == -999:
                 base_loss = loss
@@ -239,6 +276,8 @@ if args.rl and 'f' in args.feature:
         aaa = np.min(f_controller.predict(facet_controller_train_X))
         print aaa, np.log(aaa)
     '''
+    '''
+    facet_test = X_test_ori[-1]
     facet_test_2d = np.reshape(facet_test, [-1, facet_test.shape[-1]])
     facet_test_mask_p = f_controller.predict(facet_test_2d)
     facet_mask_test = []
@@ -248,21 +287,11 @@ if args.rl and 'f' in args.feature:
             facet_mask_test.append(0)
         else:
             facet_mask_test.append(1)
-
-        '''
-        rand = np.random.random()
-        if sum(facet_test_2d[k]) != 0:     
-            if rand < p_0:
-                facet_mask_test.append(0)
-            else:
-                facet_mask_test.append(1)
-        else:
-            facet_mask_test.append(0)
-        '''
-
     facet_mask_test=np.array(facet_mask_test)
     facet_mask_test.shape = (-1, max_segment_len, 1)
     X_test = X_test_ori[:-1] + [X_test_ori[-1] * facet_mask_test]
+    '''
+    X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
 
 # Final evaluation of the model
 model.load_weights(weights_path)
