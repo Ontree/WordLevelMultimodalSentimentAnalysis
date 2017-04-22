@@ -222,6 +222,7 @@ if args.rl and 'f' in args.feature:
         facet_controller_train_y = []
         sample_losses = []
         for j in range(args.rl_sample_n):
+            print('i:'+str(i)+' j:'+str(j))
             facet_mask_train = []
             facet_controller_train_y_part = []
             for k in range(facet_train_mask_p.shape[0]):
@@ -247,8 +248,8 @@ if args.rl and 'f' in args.feature:
             reset_weights(model)
             adam_model = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
             model.compile(loss='mae', optimizer=adam_model)
-            #history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
-            history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=3, batch_size=args.batch_size, callbacks=callbacks)
+            history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
+            #history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=3, batch_size=args.batch_size, callbacks=callbacks)
             loss = min(history.history['val_loss'])
             if min_loss > loss:
                 min_loss = loss
