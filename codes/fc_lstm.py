@@ -104,9 +104,9 @@ facet_train = facet_train[:-valid_size]
 facet_train = torch.from_numpy(facet_train)
 covarep_train = covarep_train[:-valid_size]
 covarep_train = torch.from_numpy(covarep_train)
-y_valid = y_train[-valid:]
+y_valid = y_train[-valid_size:]
 y_valid = torch.from_numpy(y_valid)
-y_train = y_train[:-valid]
+y_train = y_train[:-valid_size]
 y_train = torch.from_numpy(y_train)
 if args.cuda:
     embedding_train.cuda()
