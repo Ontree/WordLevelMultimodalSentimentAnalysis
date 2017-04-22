@@ -122,8 +122,8 @@ def repackage_hidden(h):
         return Variable(h.data)
     else:
         return tuple(repackage_hidden(v) for v in h)
-def get_batch(t_data,v_data,a_data,y,ix,batch_size):
-    return [[t_data[ix*batch_size:ix*(batch_size+1)],v_data[ix*batch_size:ix*(batch_size+1)],a_data[ix*batch_size,(ix+1)*batch_size]],y[ix*batch_size:(ix+1)*batch_size]]
+def get_batch(t_data,v_data,a_data,y,ix,batch_size,evaluation = False):
+    return [[Variable(t_data[ix*batch_size:ix*(batch_size+1)],volatile=evaluation),Variable(v_data[ix*batch_size:ix*(batch_size+1)],volatile=evaluation),Variable(a_data[ix*batch_size,(ix+1)*batch_size],volatile=evaluation)],Variable(y[ix*batch_size:(ix+1)*batch_size])]
 
 def evaluate(iterations):
     model.eval()
@@ -139,7 +139,7 @@ def train(iterations,lr,epoch):
     total_loss = 0
     start_time = time.time()
     for i in xrange(iterations):
-        input, target = get_batch(embedding_train,facet_train,covarep_train,y_train,i,batch_size)
+        input, target = get_batch(embedding_train,facet_train,covarep_train,y_train,i,batch_size, evaluation = True)
         optimizer.zero_grad()
         output = model(input)
         loss = criterion(target,output)
