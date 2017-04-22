@@ -91,13 +91,30 @@ for i in range(text_train.shape[0]):
 data_size = embedding_train.shape[0]
 valid_size = int(val_split*data_size)
 embedding_valid = embedding_train[-valid_size:]
+embedding_valid = torch.from_numpy(embedding_valid)
 facet_valid = facet_train[-valid_size:]
+facet_valid = torch.from_numpy(facet_valid)
 covarep_valid = covarep_train[-valid_size:]
+covarep_valid = torch.from_numpy(covarep_valid)
 embedding_train = embedding_train[:-valid_size]
+embedding_train = torch.from_numpy(embedding_train)
 facet_train = facet_train[:-valid_size]
+facet_train = torch.from_numpy(facet_train)
 covarep_train = covarep_train[:-valid_size]
+covarep_train = torch.from_numpy(covarep_train)
 y_valid = y_train[-data_size:]
+y_valid = torch.from_numpy(y_valid)
 y_train = y_train[:-data_size]
+y_train = torch.from_numpy(y_train)
+if args.cuda():
+    embedding_train.cuda()
+    embedding_valid.cuda()
+    facet_train.cuda()
+    facet_valid.cuda()
+    covarep_train.cuda()
+    covarep_valid.cuda()
+    y_train.cuda()
+    y_valid.cuda()
 print embedding_train.shape
 # X_train, X_test = [text_train], [text_test]
 # X_train.append(covarep_train)
@@ -117,6 +134,8 @@ if torch.cuda.is_available():
 
 criterion = nn.L1Loss()
 model = FCLSTM(text_train.shape[1],embedding_train.shape[-1],facet_train.shape[-1],covarep_train.shape[-1],lstm_units,batch_size,nlayers,dropout)
+if args.cuda:
+    model.cuda()
 def repackage_hidden(h):
     if type(h) == Variable:
         return Variable(h.data)
@@ -132,7 +151,7 @@ def evaluate(iterations):
         input, target = get_batch(embedding_valid,facet_valid,covarep_valid,y_valid,i,batch_size)
         loss = criterion(target, output)
         total_loss += loss.data
-    return total_loss / (iterations*batch_size)
+    return total_loss / iterations
 def train(iterations,lr,epoch):
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.train()
@@ -148,7 +167,7 @@ def train(iterations,lr,epoch):
         total_loss += loss.data
         optimizer.step()
         if i % args.log_interval == 0 and i > 0:
-            cur_loss = total_loss[0] / (args.log_interval*batch_size)
+            cur_loss = total_loss[0] / args.log_interval
             elapsed = time.time() - start_time
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
                     'loss {:5.2f}'.format(
