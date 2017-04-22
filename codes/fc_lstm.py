@@ -127,7 +127,7 @@ nlayers = args.nlayers
 dropout = args.dropout
 
 criterion = nn.L1Loss()
-model = FCLSTM(text_train.shape[1],embedding_train.shape[-1],facet_train.shape[-1],covarep_train.shape[-1],lstm_units,batch_size,nlayers,dropout)
+model = FCLSTM(embedding_train.size(1),embedding_train.size(2),facet_train.size(2),covarep_train.size(2),lstm_units,batch_size,nlayers,dropout)
 if args.cuda:
     model.cuda()
 def repackage_hidden(h):
