@@ -1,6 +1,6 @@
 import torch.nn as nn
 from torch.autograd import Variable
-
+import math
 class FCLSTM(nn.Module):
     def __init__(self, seq_len, text_size, visual_size, acc_size, hidden_size, batch_size, nlayers, dropout=0.5):
         super(FCLSTM, self).__init__()
@@ -13,10 +13,18 @@ class FCLSTM(nn.Module):
         self.VLSTM = nn.LSTM(visual_size+2*hidden_size, hidden_size, nlayers, dropout=dropout)
         self.ALSTM = nn.LSTM(acc_size+2*hidden_size, hidden_size, nlayers, dropout=dropout)
         self.init_weights()
+    def xavier_normal(self, tensor, gain=1):
+        if isinstance(tensor, Variable):
+            self.xavier_normal(tensor.data, gain=gain)
+            return tensor
+        fan_in, fan_out = tensor.size(0), tensor.size(1)
+        std = gain * math.sqrt(2.0 / (fan_in + fan_out))
+        return tensor.normal_(0, std)
     def init_weights(self):
         #initrange = 0.1
         self.decoder.bias.data.fill_(0)
-        nn.init.xavier_normal(self.decoder.weight.data)
+        self.decoder.weight.data = self.xavier_normal(self.decoder.weight.data)
+
     def forward(self,input):
         t_input = input[0]
         v_input = input[1]
