@@ -92,22 +92,22 @@ for i in range(text_train.shape[0]):
 
 data_size = embedding_train.shape[0]
 valid_size = int(val_split*data_size)
-embedding_valid = embedding_train[-valid_size:].astype(float,copy=False)
+embedding_valid = embedding_train[-valid_size:]
 embedding_valid = torch.from_numpy(embedding_valid)
-facet_valid = facet_train[-valid_size:].astype(float,copy=False)
+facet_valid = facet_train[-valid_size:]
 facet_valid = torch.from_numpy(facet_valid)
-covarep_valid = covarep_train[-valid_size:].astype(float,copy=False)
+covarep_valid = covarep_train[-valid_size:]
 covarep_valid = torch.from_numpy(covarep_valid)
-embedding_train = embedding_train[:-valid_size].astype(float,copy=False)
+embedding_train = embedding_train[:-valid_size]
 embedding_train = torch.from_numpy(embedding_train)
-facet_train = facet_train[:-valid_size].astype(float,copy=False)
+facet_train = facet_train[:-valid_size]
 facet_train = torch.from_numpy(facet_train)
-covarep_train = covarep_train[:-valid_size].astype(float,copy=False)
+covarep_train = covarep_train[:-valid_size]
 covarep_train = torch.from_numpy(covarep_train)
-y_valid = y_train[-valid_size:].astype(float,copy=False)
+y_valid = y_train[-valid_size:]
 y_valid = torch.from_numpy(y_valid)
 y_train = y_train[:-valid_size]
-y_train = torch.from_numpy(y_train).astype(float,copy=False)
+y_train = torch.from_numpy(y_train)
 if args.cuda:
     embedding_train.cuda()
     embedding_valid.cuda()

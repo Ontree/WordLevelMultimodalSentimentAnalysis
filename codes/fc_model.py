@@ -43,13 +43,13 @@ class FCLSTM(nn.Module):
         hai_feature = hai[0][-1, :, :]
         hai_feature = hai_feature.unsqueeze(1)
         for i in range(self.seq_len):
-            it_input = t_input[:,i,:].contiguous()
+            it_input = t_input[:,i,:].contiguous().float()
             it_input = it_input.unsqueeze(1)
             it_input = self.drop(torch.cat((it_input,hvi_feature,hai_feature),2))
-            iv_input = v_input[:, i, :].contiguous()
+            iv_input = v_input[:, i, :].contiguous().float()
             iv_input = iv_input.unsqueeze(1)
             iv_input = self.drop(torch.cat((iv_input,hti_feature,hai_feature),2))
-            ia_input = a_input[:, i, :].contiguous()
+            ia_input = a_input[:, i, :].contiguous().float()
             ia_input = ia_input.unsqueeze(1)
             ia_input = self.drop(torch.cat((ia_input,hti_feature,hvi_feature),2))
             # concatenate input with features
