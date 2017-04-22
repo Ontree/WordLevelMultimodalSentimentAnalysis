@@ -144,7 +144,7 @@ def evaluate(iterations):
     model.eval()
     total_loss = 0
     for i in xrange(iterations):
-        input, target = get_batch(embedding_valid,facet_valid,covarep_valid,y_valid,i,batch_size)
+        input, target = get_batch(embedding_valid,facet_valid,covarep_valid,y_valid,i,batch_size,, evaluation = True)
         loss = criterion(target, output)
         total_loss += loss.data
     return total_loss / iterations
@@ -154,7 +154,7 @@ def train(iterations,lr,epoch):
     total_loss = 0
     start_time = time.time()
     for i in xrange(iterations):
-        input, target = get_batch(embedding_train,facet_train,covarep_train,y_train,i,batch_size, evaluation = True)
+        input, target = get_batch(embedding_train,facet_train,covarep_train,y_train,i,batch_size)
         optimizer.zero_grad()
         output = model(input)
         loss = criterion(target,output)
