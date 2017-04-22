@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 from torch.autograd import Variable
 import math
 class FCLSTM(nn.Module):
