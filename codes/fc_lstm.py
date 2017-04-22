@@ -115,7 +115,6 @@ if args.cuda:
     covarep_valid.cuda()
     y_train.cuda()
     y_valid.cuda()
-print embedding_train.shape
 # X_train, X_test = [text_train], [text_test]
 # X_train.append(covarep_train)
 # X_test.append(covarep_test)
