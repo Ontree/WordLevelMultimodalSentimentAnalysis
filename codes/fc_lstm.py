@@ -50,7 +50,9 @@ use_pretrained_word_embedding = True    # fixed. use glove 300d
 embedding_vecor_length = 300            # fixed. use glove 300d
 max_segment_len = args.max_segment_len  #115                   # fixed for MOSI. The max length of a segment in MOSI dataset is 114
 end_to_end = True                       # fixed
-lstm_units = 64
+text_hidden_size = 64
+visual_hidden_size = 8
+acc_hidden_size = 8
 word_embedding = loader.load_word_embedding()
 train, test = loader.load_word_level_features(max_segment_len, tr_split)
 feature_str = ''
@@ -102,9 +104,9 @@ facet_train = facet_train[:-valid_size]
 facet_train = torch.from_numpy(facet_train)
 covarep_train = covarep_train[:-valid_size]
 covarep_train = torch.from_numpy(covarep_train)
-y_valid = y_train[-data_size:]
+y_valid = y_train[-valid:]
 y_valid = torch.from_numpy(y_valid)
-y_train = y_train[:-data_size]
+y_train = y_train[:-valid]
 y_train = torch.from_numpy(y_train)
 if args.cuda:
     embedding_train.cuda()
@@ -127,7 +129,7 @@ nlayers = args.nlayers
 dropout = args.dropout
 
 criterion = nn.L1Loss()
-model = FCLSTM(embedding_train.size(1),embedding_train.size(2),facet_train.size(2),covarep_train.size(2),lstm_units,batch_size,nlayers,dropout)
+model = FCLSTM(embedding_train.size(1),embedding_train.size(2),facet_train.size(2),covarep_train.size(2),text_hidden_size,visual_hidden_size,acc_hidden_size,batch_size,nlayers,dropout)
 if args.cuda:
     model.cuda()
 def repackage_hidden(h):

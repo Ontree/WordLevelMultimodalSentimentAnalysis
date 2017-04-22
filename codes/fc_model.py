@@ -2,17 +2,16 @@ import torch.nn as nn
 from torch.autograd import Variable
 import math
 class FCLSTM(nn.Module):
-    def __init__(self, seq_len, text_size, visual_size, acc_size, hidden_size, batch_size, nlayers, dropout=0.5):
+    def __init__(self, seq_len, text_size, visual_size, acc_size, text_hidden_size, visual_hidden_size, acc_hidden_size, batch_size, nlayers, dropout=0.5):
         super(FCLSTM, self).__init__()
         self.batch_size = batch_size
         self.seq_len = seq_len
-        self.hidden_size = hidden_size
         self.drop = nn.Dropout(dropout)
-        self.decoder = nn.Linear(3*hidden_size, 1)
+        self.decoder = nn.Linear(text_hidden_size+visual_hidden_size+acc_hidden_size, 1)
         self.nlayers = nlayers
-        self.TLSTM = nn.LSTM(text_size+2*hidden_size, hidden_size, nlayers, dropout = dropout, batch_first = True)
-        self.VLSTM = nn.LSTM(visual_size+2*hidden_size, hidden_size, nlayers, dropout=dropout, batch_first = True)
-        self.ALSTM = nn.LSTM(acc_size+2*hidden_size, hidden_size, nlayers, dropout=dropout, batch_first = True)
+        self.TLSTM = nn.LSTM(text_size+visual_hidden_size+acc_hidden_size, text_hidden_size, nlayers, dropout = dropout, batch_first = True)
+        self.VLSTM = nn.LSTM(visual_size++text_hidden_size+acc_hidden_size, visual_hidden_size, nlayers, dropout=dropout, batch_first = True)
+        self.ALSTM = nn.LSTM(acc_size+text_hidden_size+visual_hidden_size, acc_hidden_size, nlayers, dropout=dropout, batch_first = True)
         self.init_weights()
     def xavier_normal(self, tensor, gain=1):
         if isinstance(tensor, Variable):
