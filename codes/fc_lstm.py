@@ -138,7 +138,7 @@ def repackage_hidden(h):
     else:
         return tuple(repackage_hidden(v) for v in h)
 def get_batch(t_data,v_data,a_data,y,ix,batch_size,evaluation = False):
-    return [[Variable(t_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation),Variable(v_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation),Variable(a_data[ix*batch_size,(ix+1)*batch_size],volatile=evaluation)],Variable(y[ix*batch_size:(ix+1)*batch_size])]
+    return [[Variable(t_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation),Variable(v_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation),Variable(a_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation)],Variable(y[ix*batch_size:(ix+1)*batch_size])]
 
 def evaluate(iterations):
     model.eval()
