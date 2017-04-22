@@ -57,7 +57,7 @@ word_embedding = loader.load_word_embedding()
 train, test = loader.load_word_level_features(max_segment_len, tr_split)
 feature_str = ''
 if args.feature_selection:
-    with open('/usr0/home/minghai1/777/preprocess/fs_mask.pkl') as f:
+    with open('/usr0/home/minghai1/multimodal/preprocess/fs_mask.pkl') as f:
         [covarep_ix, facet_ix] = pickle.load(f)
     facet_train = train['facet'][:,:,facet_ix]
     facet_test = test['facet'][:,:,facet_ix]
@@ -138,7 +138,7 @@ def repackage_hidden(h):
     else:
         return tuple(repackage_hidden(v) for v in h)
 def get_batch(t_data,v_data,a_data,y,ix,batch_size,evaluation = False):
-    return [[Variable(t_data[ix*batch_size:ix*(batch_size+1)],volatile=evaluation),Variable(v_data[ix*batch_size:ix*(batch_size+1)],volatile=evaluation),Variable(a_data[ix*batch_size,(ix+1)*batch_size],volatile=evaluation)],Variable(y[ix*batch_size:(ix+1)*batch_size])]
+    return [[Variable(t_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation),Variable(v_data[ix*batch_size:(ix+1)*batch_size],volatile=evaluation),Variable(a_data[ix*batch_size,(ix+1)*batch_size],volatile=evaluation)],Variable(y[ix*batch_size:(ix+1)*batch_size])]
 
 def evaluate(iterations):
     model.eval()
