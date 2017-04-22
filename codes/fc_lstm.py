@@ -148,7 +148,7 @@ def evaluate(iterations):
         output = model(input)
         loss = criterion(target, output)
         total_loss += loss.data
-    return total_loss / iterations
+    return total_loss[0] / iterations
 def train(iterations,lr,epoch):
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.train()
