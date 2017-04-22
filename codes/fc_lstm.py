@@ -8,6 +8,9 @@ import math
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import torch.optim as optim
+from fc_model import FCLSTM
+from math import floor
 np.random.seed(0)
 
 parser = argparse.ArgumentParser(description='PyTorch FC-LSTM Model for Word Level Sentiment Analysis')
@@ -15,12 +18,22 @@ parser.add_argument('--dropout', type=float, default=0.5,
                     help='dropout applied to layers (0 = no dropout)')
 parser.add_argument('--cuda', action='store_true',
                     help='use CUDA')
+parser.add_argument('--clip', type=float, default=0.25,
+                    help='gradient clipping')
 parser.add_argument('--max_segment_len', default=115, type=int, help='')
 parser.add_argument('-s', '--feature_selection', default=0, type=int, choices=[0,1], help='whether to use feature_selection')
 parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
+parser.add_argument('--nlayers', type=int, default=1, metavar='N',
+                    help='num of LSTM layers')
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
+parser.add_argument('--epochs', type=int, default=40,
+                    help='upper epoch limit')
+parser.add_argument('--log-interval', type=int, default=5, metavar='N',
+                    help='report interval')
+parser.add_argument('--lr', type=float, default=0.01,
+                    help='initial learning rate')
 args = parser.parse_args()
 torch.manual_seed(args.seed)
 if torch.cuda.is_available():
@@ -57,8 +70,9 @@ else:
 text_train = train['text']
 text_test = test['text']
 y_train = train['label']
+y_train = y_train.reshape((len(y_train),1))
 y_test = test['label']
-
+y_test = y_test.reshape((len(y_test),1))
 facet_train_max = np.max(np.max(np.abs(facet_train ), axis =0),axis=0)
 facet_train_max[facet_train_max==0] = 1
 covarep_train_max =  np.max(np.max(np.abs(covarep_train), axis =0),axis=0)
@@ -72,6 +86,18 @@ embedding_train = np.zeros((text_train.shape[0],text_train.shape[1],len(word_emb
 for i in range(text_train.shape[0]):
     for j in range(text_train.shape[1]):
         embedding_train[i][j] = word_embedding[text_train[i][j]]
+
+
+data_size = embedding_train.shape[0]
+valid_size = int(val_split*data_size)
+embedding_valid = embedding_train[-valid_size:]
+facet_valid = facet_train[-valid_size:]
+covarep_valid = covarep_train[-valid_size:]
+embedding_train = embedding_train[:-valid_size]
+facet_train = facet_train[:-valid_size]
+covarep_train = covarep_train[:-valid_size]
+y_valid = y_train[-data_size:]
+y_train = y_train[:-data_size]
 print embedding_train.shape
 # X_train, X_test = [text_train], [text_test]
 # X_train.append(covarep_train)
@@ -80,20 +106,77 @@ print embedding_train.shape
 # X_test.append(facet_test)
 #--------END LOAD DATA
 
-
+batch_size = args.batch_size
+nlayers = args.nlayers
+dropout = args.dropout
 if torch.cuda.is_available():
     if not args.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
     else:
         torch.cuda.manual_seed(args.seed)
-criterion = nn.L1Loss()
 
+criterion = nn.L1Loss()
+model = FCLSTM(text_train.shape[1],embedding_train.shape[-1],facet_train.shape[-1],covarep_train.shape[-1],lstm_units,batch_size,nlayers,dropout)
 def repackage_hidden(h):
     if type(h) == Variable:
         return Variable(h.data)
     else:
         return tuple(repackage_hidden(v) for v in h)
+def get_batch(t_data,v_data,a_data,y,ix,batch_size):
+    return [[t_data[ix*batch_size:ix*(batch_size+1)],v_data[ix*batch_size:ix*(batch_size+1)],a_data[ix*batch_size,(ix+1)*batch_size]],y[ix*batch_size:(ix+1)*batch_size]]
 
-
-
-if __name__ == '__main__':
+def evaluate(iterations):
+    model.eval()
+    total_loss = 0
+    for i in xrange(iterations):
+        input, target = get_batch(embedding_valid,facet_valid,covarep_valid,y_valid,i,batch_size)
+        loss = criterion(target, output)
+        total_loss += loss.data
+    return total_loss / (iterations*batch_size)
+def train(iterations,lr,epoch):
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    model.train()
+    total_loss = 0
+    start_time = time.time()
+    for i in xrange(iterations):
+        input, target = get_batch(embedding_train,facet_train,covarep_train,y_train,i,batch_size)
+        optimizer.zero_grad()
+        output = model(input)
+        loss = criterion(target,output)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
+        total_loss += loss.data
+        optimizer.step()
+        if i % args.log_interval == 0 and i > 0:
+            cur_loss = total_loss[0] / (args.log_interval*batch_size)
+            elapsed = time.time() - start_time
+            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
+                    'loss {:5.2f}'.format(
+                epoch, i, iterations, lr,
+                elapsed * 1000 / args.log_interval, cur_loss))
+            total_loss = 0
+            start_time = time.time()
+lr = args.lr
+best_val_loss = None
+try:
+    for epoch in range(1, args.epochs+1):
+        epoch_start_time = time.time()
+        train_iterations = floor(len(embedding_train) / batch_size)
+        valid_iterations = floor(len(embedding_valid) / batch_size)
+        train(train_iterations,lr,epoch)
+        val_loss = evaluate(valid_iterations)
+        print('-' * 89)
+        print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f}'.format(epoch, (time.time() - epoch_start_time),
+                                           val_loss))
+        print('-' * 89)
+        # Save the model if the validation loss is the best we've seen so far.
+        if not best_val_loss or val_loss < best_val_loss:
+            with open(args.save, 'wb') as f:
+                torch.save(model, f)
+            best_val_loss = val_loss
+        else:
+            # Anneal the learning rate if no improvement has been seen in the validation dataset.
+            lr /= 4.0
+except KeyboardInterrupt:
+    print('-' * 89)
+    print('Exiting from training early')
