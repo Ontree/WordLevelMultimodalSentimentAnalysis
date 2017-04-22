@@ -106,7 +106,7 @@ y_valid = y_train[-data_size:]
 y_valid = torch.from_numpy(y_valid)
 y_train = y_train[:-data_size]
 y_train = torch.from_numpy(y_train)
-if args.cuda():
+if args.cuda:
     embedding_train.cuda()
     embedding_valid.cuda()
     facet_train.cuda()
@@ -126,11 +126,6 @@ print embedding_train.shape
 batch_size = args.batch_size
 nlayers = args.nlayers
 dropout = args.dropout
-if torch.cuda.is_available():
-    if not args.cuda:
-        print("WARNING: You have a CUDA device, so you should probably run with --cuda")
-    else:
-        torch.cuda.manual_seed(args.seed)
 
 criterion = nn.L1Loss()
 model = FCLSTM(text_train.shape[1],embedding_train.shape[-1],facet_train.shape[-1],covarep_train.shape[-1],lstm_units,batch_size,nlayers,dropout)
