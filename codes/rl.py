@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import tools.data_loader as loader
 import numpy as np
 np.random.seed(0)
@@ -76,7 +76,7 @@ parser.add_argument('-a', '--attention', default=1, type=int, choices=[0,1], hel
 parser.add_argument('-s', '--feature_selection', default=1, type=int, choices=[0,1], help='whether to use feature_selection')
 parser.add_argument('-c', '--convolution', default=0, type=int, choices=[0,1], help='whether to use convolutional layer on covarep and facet')
 parser.add_argument('--max_segment_len', default=115, type=int, help='')
-parser.add_argument('--rl_sample_n', default=10, type=int)
+parser.add_argument('--rl_sample_n', default=5, type=int)
 parser.add_argument('--rl_all_epoch', default=100, type=int)
 parser.add_argument('-r', '--rl', default=1, type=int, choices=[0, 1], help='1: use rl')
 
@@ -210,7 +210,7 @@ if args.rl and 'f' in args.feature:
     min_loss = 99999
     X_train_ori, X_test_ori = X_train, X_test
     f_controller =  controller.visual_controller(facet_dim)
-    adam_controller = optimizers.Adam(lr=0.05, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+    adam_controller = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
     f_controller.compile(loss=controller.my_loss, optimizer=adam_controller)
 
     facet_train = X_train_ori[-1]
@@ -218,10 +218,13 @@ if args.rl and 'f' in args.feature:
     base_loss = -999
     for i in range(args.rl_all_epoch):
         facet_train_mask_p = f_controller.predict(facet_train_2d)
+        with open('tmp.txt', 'a') as f:
+            f.write(str(facet_train_mask_p[:4])+'\n\n\n')
         facet_controller_train_X = [] 
         facet_controller_train_y = []
         sample_losses = []
         for j in range(args.rl_sample_n):
+            print('i:'+str(i)+' j:'+str(j))
             facet_mask_train = []
             facet_controller_train_y_part = []
             for k in range(facet_train_mask_p.shape[0]):
@@ -247,8 +250,8 @@ if args.rl and 'f' in args.feature:
             reset_weights(model)
             adam_model = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
             model.compile(loss='mae', optimizer=adam_model)
-            #history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
-            history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=3, batch_size=args.batch_size, callbacks=callbacks)
+            history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
+            #history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=3, batch_size=args.batch_size, callbacks=callbacks)
             loss = min(history.history['val_loss'])
             if min_loss > loss:
                 min_loss = loss
@@ -294,7 +297,9 @@ if args.rl and 'f' in args.feature:
     X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
 
 # Final evaluation of the model
-model.load_weights(weights_path)
+f_controller.load_weights('../weights/controller.h5')
+model.load_weights("../weights/rl_model.h5")       
+#model.load_weights(weights_path)
 mae = model.evaluate(X_test, y_test, verbose=0)
 predictions = model.predict(X_test)
 predictions = predictions.reshape(-1,)
