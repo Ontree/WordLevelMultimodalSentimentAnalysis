@@ -110,15 +110,15 @@ y_valid = y_train[-valid_size:]
 y_valid = torch.from_numpy(y_valid).float()
 y_train = y_train[:-valid_size]
 y_train = torch.from_numpy(y_train).float()
-if args.cuda:
-    embedding_train.cuda()
-    embedding_valid.cuda()
-    facet_train.cuda()
-    facet_valid.cuda()
-    covarep_train.cuda()
-    covarep_valid.cuda()
-    y_train.cuda()
-    y_valid.cuda()
+# if args.cuda:
+#     embedding_train.cuda()
+#     embedding_valid.cuda()
+#     facet_train.cuda()
+#     facet_valid.cuda()
+#     covarep_train.cuda()
+#     covarep_valid.cuda()
+#     y_train.cuda()
+#     y_valid.cuda()
 # X_train, X_test = [text_train], [text_test]
 # X_train.append(covarep_train)
 # X_test.append(covarep_test)
@@ -154,6 +154,12 @@ def evaluate(iterations):
 def train(iterations,lr,epoch):
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.train()
+    data_size = embedding_train.size(0)
+    ixs = torch.ranperm(data_size)
+    embedding_train = embedding_train[ixs]
+    facet_train = facet_train[ixs]
+    covarep_train = covarep_train[ixs]
+    y_train = y_train[ixs]
     total_loss = 0
     start_time = time.time()
     for i in xrange(iterations):
