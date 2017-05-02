@@ -11,9 +11,9 @@ class FCLSTM(nn.Module):
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.drop = nn.Dropout(dropout)
-        self.decoder = nn.Linear(text_hidden_size+visual_hidden_size+acc_hidden_size, 1)
+        self.decoder = nn.Linear(text_hidden_size, 1)
         self.nlayers = nlayers
-        self.TLSTM = nn.LSTM(text_size+visual_hidden_size+acc_hidden_size, text_hidden_size, nlayers, dropout = dropout, batch_first = True)
+        self.TLSTM = nn.LSTM(text_size, text_hidden_size, nlayers, dropout = dropout, batch_first = True)
         self.init_weights()
     def xavier_normal(self, tensor, gain=1):
         if isinstance(tensor, Variable):
@@ -43,7 +43,7 @@ class FCLSTM(nn.Module):
         for i in range(self.seq_len):
             it_input = t_input[:,i,:].contiguous().float()
             it_input = it_input.unsqueeze(1)
-            it_input = self.drop(it_input,2)
+            it_input = self.drop(it_input)
             # iv_input = v_input[:, i, :].contiguous().float()
             # iv_input = iv_input.unsqueeze(1)
             # iv_input = self.drop(torch.cat((iv_input,hti_feature,hai_feature),2))
@@ -54,8 +54,8 @@ class FCLSTM(nn.Module):
             _, hti = self.TLSTM(it_input, hti)
             # _, hvi = self.VLSTM(iv_input,hvi)
             # _, hai = self.ALSTM(ia_input, hai)
-            hti_feature = hti[0][-1,:,:]
-            hti_feature = hti_feature.unsqueeze(1)
+            #hti_feature = hti[0][-1,:,:]
+            #hti_feature = hti_feature.unsqueeze(1)
             # hvi_feature = hvi[0][-1,:,:]
             # hvi_feature = hvi_feature.unsqueeze(1)
             # hai_feature = hai[0][-1,:,:]
@@ -63,7 +63,7 @@ class FCLSTM(nn.Module):
         hti = hti[0][-1,:,:]
         # hvi = hvi[0][-1,:,:]
         # hai = hai[0][-1,:,:]
-        hidden_feature = self.drop(hti, 1)
+        hidden_feature = self.drop(hti)
         output = self.decoder(hidden_feature)
         return output
     def init_hidden(self,batch_size,hidden_size):
