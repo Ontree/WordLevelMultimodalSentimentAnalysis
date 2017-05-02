@@ -14,7 +14,7 @@ class FCLSTM(nn.Module):
         self.decoder = nn.Linear(text_hidden_size+visual_hidden_size+acc_hidden_size, 1)
         self.nlayers = nlayers
         self.TLSTM = nn.LSTM(text_size+visual_hidden_size+acc_hidden_size, text_hidden_size, nlayers, dropout = dropout, batch_first = True)
-        self.VLSTM = nn.LSTM(visual_size++text_hidden_size+acc_hidden_size, visual_hidden_size, nlayers, dropout=dropout, batch_first = True)
+        self.VLSTM = nn.LSTM(visual_size+text_hidden_size+acc_hidden_size, visual_hidden_size, nlayers, dropout=dropout, batch_first = True)
         self.ALSTM = nn.LSTM(acc_size+text_hidden_size+visual_hidden_size, acc_hidden_size, nlayers, dropout=dropout, batch_first = True)
         self.init_weights()
     def xavier_normal(self, tensor, gain=1):
