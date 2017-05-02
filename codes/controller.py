@@ -42,7 +42,7 @@ def visual_controller(facet_dim):
 def my_loss(realy, predy):
 	# assume realy is R_k, which is mae from trained lstm model
 	# then predy is p(v | params)
-        return tf.reduce_sum(tf.log(predy) * realy+1e-8, 1)
+        return tf.reduce_sum(tf.log(predy+1e-5) * realy, 1)
 
 
 if __name__ == '__main__':

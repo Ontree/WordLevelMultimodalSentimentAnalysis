@@ -210,7 +210,7 @@ if args.rl and 'f' in args.feature:
     min_loss = 99999
     X_train_ori, X_test_ori = X_train, X_test
     f_controller =  controller.visual_controller(facet_dim)
-    adam_controller = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+    adam_controller = optimizers.Adam(lr=0.00001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
     f_controller.compile(loss=controller.my_loss, optimizer=adam_controller)
 
     facet_train = X_train_ori[-1]
