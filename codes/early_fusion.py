@@ -113,9 +113,13 @@ facet_input = Input(shape=(max_segment_len, facet_train.shape[2]), name='facet_i
 covarep_input = Input(shape=(max_segment_len, covarep_train.shape[2]), name='covarep_input')
 
 # convolutional layers
+#print facet_train.shape
+#print covarep_train.shape
+#print text_eb_layer.shape
 if args.convolution:
-    facet_layer = Conv1D(facet_train.shape[2], 3, padding='same', activation='tanh')(facet_input)
-    covarep_layer = Conv1D(covarep_train.shape[2], 3, padding='same', activation='tanh')(covarep_input)
+    facet_layer = Conv1D(facet_train.shape[2], 5, padding='same', activation='tanh')(facet_input)
+    covarep_layer = Conv1D(covarep_train.shape[2], 5, padding='same', activation='tanh')(covarep_input)
+    text_eb_layer = Conv1D(embedding_vecor_length, 5, padding='same', activation='tanh')(text_eb_layer)
 else:
     facet_layer = facet_input
     covarep_layer = covarep_input
@@ -135,8 +139,8 @@ else:
 
 
 if args.attention:
-    activations = LSTM(lstm_units, name = 'lstm_layer', trainable=end_to_end, return_sequences=True)(merge_input)
-    attention = TimeDistributed(Dense(1, activation='tanh'))(activations) 
+    activations = LSTM(lstm_units, dropout=0.7, name = 'lstm_layer', trainable=end_to_end, return_sequences=True)(merge_input)
+    attention = TimeDistributed(Dense(1, activation='tanh'))(activations)
     attention = Flatten()(attention)
     attention = Activation('softmax')(attention)
     attention = RepeatVector(lstm_units)(attention)
@@ -146,9 +150,9 @@ if args.attention:
     sent_representation = merge([activations, attention], mode='mul')
     sent_representation = Lambda(lambda xin: K.sum(xin, axis=1))(sent_representation)
 else:
-    sent_representation = LSTM(64, name = 'lstm_layer', trainable=end_to_end)(merge_input)
+    sent_representation = LSTM(300, dropout=0.7, name = 'lstm_layer', trainable=end_to_end)(merge_input)
 
-output_layer_1 = Dense(1, name = 'dense_layer', W_regularizer=l2(0.01))(sent_representation)
+output_layer_1 = Dense(1, name = 'dense_layer', W_regularizer=l2(0.0))(sent_representation)
 model = Model(model_input, output_layer_1)
 
 
@@ -156,11 +160,12 @@ callbacks = [
     EarlyStopping(monitor='val_loss', patience=args.train_patience, verbose=0),
     ModelCheckpoint(weights_path, monitor='val_loss', save_best_only=True, verbose=0),
 ]
-adam = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08) #decay=0.999)
+#adam = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08) #decay=0.999)
+adam = optimizers.RMSprop(lr=0.0002)
 #sgd = SGD(lr=0.0005, decay=1e-6, momentum=0.9, nesterov=True)
 model.compile(loss='mae', optimizer=adam)
 print(model.summary())
-model.fit(X_train, y_train, validation_split=val_split, nb_epoch=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
+model.fit(X_train, y_train, validation_split=val_split, epochs=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
 model.load_weights(weights_path)
 
 # Final evaluation of the model
