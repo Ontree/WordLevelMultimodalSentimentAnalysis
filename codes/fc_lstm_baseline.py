@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
-from fc_model_baseline import FCLSTM
+from fc_model_baseline_mean import FCLSTM
 from math import floor
 np.random.seed(0)
 
