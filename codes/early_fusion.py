@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import tools.data_loader as loader
 import numpy as np
 np.random.seed(0)
@@ -139,7 +139,7 @@ else:
 
 
 if args.attention:
-    activations = LSTM(lstm_units, dropout=0.7, name = 'lstm_layer', trainable=end_to_end, return_sequences=True)(merge_input)
+    activations = LSTM(lstm_units, dropout=0.5, name = 'lstm_layer', trainable=end_to_end, return_sequences=True)(merge_input)
     attention = TimeDistributed(Dense(1, activation='tanh'))(activations)
     attention = Flatten()(attention)
     attention = Activation('softmax')(attention)
@@ -150,9 +150,10 @@ if args.attention:
     sent_representation = merge([activations, attention], mode='mul')
     sent_representation = Lambda(lambda xin: K.sum(xin, axis=1))(sent_representation)
 else:
-    sent_representation = LSTM(300, dropout=0.7, name = 'lstm_layer', trainable=end_to_end)(merge_input)
+    sent_representation = LSTM(lstm_units, dropout=0.5, name = 'lstm_layer', trainable=end_to_end)(merge_input)
 
-output_layer_1 = Dense(1, name = 'dense_layer', W_regularizer=l2(0.0))(sent_representation)
+sent_representation = Dense(50, name = 'dense_layer1', activation='relu')(sent_representation)
+output_layer_1 = Dense(1, name = 'dense_layer2')(sent_representation)
 model = Model(model_input, output_layer_1)
 
 
