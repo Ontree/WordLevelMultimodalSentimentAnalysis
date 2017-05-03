@@ -35,6 +35,7 @@ class FCLSTM(nn.Module):
         # hvi = self.init_hidden(self.batch_size,self.visual_hidden_size)
         # hai = self.init_hidden(self.batch_size,self.acc_hidden_size)
         hti_feature = hti[0][-1, :, :]
+        final_h = Variable(hti_feature.data)
         hti_feature = hti_feature.unsqueeze(1)
         # hvi_feature = hvi[0][-1, :, :]
         # hvi_feature = hvi_feature.unsqueeze(1)
@@ -52,6 +53,7 @@ class FCLSTM(nn.Module):
             # ia_input = self.drop(torch.cat((ia_input,hti_feature,hvi_feature),2))
             # concatenate input with features
             _, hti = self.TLSTM(it_input, hti)
+            final_h = final_h + hti[0][-1,:,:]
             # _, hvi = self.VLSTM(iv_input,hvi)
             # _, hai = self.ALSTM(ia_input, hai)
             #hti_feature = hti[0][-1,:,:]
@@ -60,11 +62,11 @@ class FCLSTM(nn.Module):
             # hvi_feature = hvi_feature.unsqueeze(1)
             # hai_feature = hai[0][-1,:,:]
             # hai_feature = hai_feature.unsqueeze(1)
-        hti = hti[0][-1,:,:]
+        final_h = final_h / float(self.seq_len)
         # hvi = hvi[0][-1,:,:]
         # hai = hai[0][-1,:,:]
-        hidden_feature = self.drop(hti)
-        output = self.decoder(hidden_feature)
+        hidden_feature = self.drop(final_h)
+        output = self.decoder(final_h)
         return output
     def init_hidden(self,batch_size,hidden_size):
         weight = next(self.parameters()).data

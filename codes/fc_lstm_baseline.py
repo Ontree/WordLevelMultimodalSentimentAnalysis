@@ -9,12 +9,12 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
-from fc_model import FCLSTM
+from fc_model_baseline_mean import FCLSTM
 from math import floor
 np.random.seed(0)
 
 parser = argparse.ArgumentParser(description='PyTorch FC-LSTM Model for Word Level Sentiment Analysis')
-parser.add_argument('--dropout', type=float, default=0.5,
+parser.add_argument('--dropout', type=float, default=.0,
                     help='dropout applied to layers (0 = no dropout)')
 parser.add_argument('--cuda', action='store_true',
                     help='use CUDA')
