@@ -7,9 +7,10 @@ import time
 import math
 import torch
 import torch.nn as nn
+import cPickle as pickle
 from torch.autograd import Variable
 import torch.optim as optim
-from fc_model import FCLSTM
+from fc_model_mean import FCLSTM
 from math import floor
 np.random.seed(0)
 
@@ -18,6 +19,7 @@ parser.add_argument('--dropout', type=float, default=0.5,
                     help='dropout applied to layers (0 = no dropout)')
 parser.add_argument('--cuda', action='store_true',
                     help='use CUDA')
+parser.add_argument('--adaptive',action='store_true',help='adaptive learning rate')
 parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
 parser.add_argument('--max_segment_len', default=115, type=int, help='')
@@ -28,11 +30,11 @@ parser.add_argument('--nlayers', type=int, default=1, metavar='N',
                     help='num of LSTM layers')
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
-parser.add_argument('--epochs', type=int, default=1000,
+parser.add_argument('--epochs', type=int, default=400,
                     help='upper epoch limit')
 parser.add_argument('--log-interval', type=int, default=5, metavar='N',
                     help='report interval')
-parser.add_argument('--lr', type=float, default=0.001,
+parser.add_argument('--lr', type=float, default=0.0005,
                     help='initial learning rate')
 parser.add_argument('--save', type=str,  default='fcmodel.pt',
                     help='path to save the final model')
@@ -53,13 +55,13 @@ embedding_vecor_length = 300            # fixed. use glove 300d
 max_segment_len = args.max_segment_len  #115                   # fixed for MOSI. The max length of a segment in MOSI dataset is 114
 end_to_end = True                       # fixed
 text_hidden_size = 64
-visual_hidden_size = 16
-acc_hidden_size = 16
+visual_hidden_size = 32
+acc_hidden_size = 32
 word_embedding = loader.load_word_embedding()
 train, test = loader.load_word_level_features(max_segment_len, tr_split)
 feature_str = ''
 if args.feature_selection:
-    with open('/usr0/home/minghai1/multimodal/preprocess/fs_mask.pkl') as f:
+    with open('fs_mask.pkl') as f:
         [covarep_ix, facet_ix] = pickle.load(f)
     facet_train = train['facet'][:,:,facet_ix]
     facet_test = test['facet'][:,:,facet_ix]
@@ -87,10 +89,15 @@ facet_test = facet_test / facet_train_max
 covarep_train = covarep_train / covarep_train_max
 covarep_test = covarep_test / covarep_train_max
 embedding_train = np.zeros((text_train.shape[0],text_train.shape[1],len(word_embedding[0])))
+embedding_test = np.zeros((text_test.shape[0],text_test.shape[1],len(word_embedding[0])))
+
 for i in range(text_train.shape[0]):
     for j in range(text_train.shape[1]):
         embedding_train[i][j] = word_embedding[text_train[i][j]]
 
+for i in range(text_test.shape[0]):
+    for j in range(text_test.shape[1]):
+        embedding_test[i][j] = word_embedding[text_test[i][j]]
 
 data_size = embedding_train.shape[0]
 valid_size = int(val_split*data_size)
@@ -110,6 +117,10 @@ y_valid = y_train[-valid_size:]
 y_valid = torch.from_numpy(y_valid).float()
 y_train = y_train[:-valid_size]
 y_train = torch.from_numpy(y_train).float()
+embedding_test = torch.from_numpy(embedding_test).float()
+facet_test = torch.from_numpy(facet_test).float()
+covarep_test = torch.from_numpy(covarep_test).float()
+y_test = torch.from_numpy(y_test).float()
 # if args.cuda:
 #     embedding_train.cuda()
 #     embedding_valid.cuda()
@@ -151,6 +162,17 @@ def evaluate(iterations):
         loss = criterion(target, output)
         total_loss += loss.data
     return total_loss[0] / iterations
+
+def test(iterations):
+    model.eval()
+    total_loss = 0
+    for i in xrange(iterations):
+        input, target = get_batch(embedding_test,facet_test,covarep_test,y_test,i,batch_size, evaluation = True)
+        output = model(input)
+        loss = criterion(target,output)
+        total_loss += loss.data
+    return total_loss[0] / iterations
+
 def train(iterations,lr,epoch,embedding_train,facet_train,covarep_train,y_train):
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.train()
@@ -168,7 +190,7 @@ def train(iterations,lr,epoch,embedding_train,facet_train,covarep_train,y_train)
         output = model(input)
         loss = criterion(output,target)
         loss.backward()
- #       torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
+        torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
         total_loss += loss.data
         optimizer.step()
         if i % args.log_interval == 0 and i > 0:
@@ -198,11 +220,20 @@ try:
             with open(args.save, 'wb') as f:
                 torch.save(model, f)
             best_val_loss = val_loss
+        else:
+            if args.adaptive:
+                lr /= 4.0
 #        else:
             # Anneal the learning rate if no improvement has been seen in the validation dataset.
 #            lr /= 4.0
     print 'training complete'
     print best_val_loss
+    with open(args.save, 'rb') as f:
+        model = torch.load(f)
+    test_iterations = int(floor(len(embedding_test)/batch_size))
+    test_loss = test(test_iterations)
+    print('-'*89)
+    print('test loss {:5.2f}'.format(test_loss))
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')
