@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import tools.data_loader as loader
 import numpy as np
 np.random.seed(0)

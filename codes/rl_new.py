@@ -177,7 +177,7 @@ else:
 
 
 if args.attention:
-    activations = LSTM(lstm_units, name = 'lstm_layer', trainable=end_to_end, return_sequences=True)(merge_input)
+    activations = LSTM(lstm_units, dropout=0.5, name = 'lstm_layer', trainable=end_to_end, return_sequences=True)(merge_input)
     attention = TimeDistributed(Dense(1, activation='tanh'))(activations) 
     attention = Flatten()(attention)
     attention = Activation('softmax')(attention)
@@ -188,9 +188,12 @@ if args.attention:
     sent_representation = merge([activations, attention], mode='mul')
     sent_representation = Lambda(lambda xin: K.sum(xin, axis=1))(sent_representation)
 else:
-    sent_representation = LSTM(64, name = 'lstm_layer', trainable=end_to_end)(merge_input)
+    sent_representation = LSTM(lstm_units, dropout=0.5, name = 'lstm_layer', trainable=end_to_end)(merge_input)
 
-output_layer_1 = Dense(1, name = 'dense_layer', W_regularizer=l2(0.01))(sent_representation)
+
+
+sent_representation = Dense(50, name = 'dense_layer1', activation='relu')(sent_representation)
+output_layer_1 = Dense(1, name = 'dense_layer2', W_regularizer=l2(0.01))(sent_representation)
 
 
 
@@ -201,7 +204,7 @@ callbacks = [
 
 #sgd = SGD(lr=0.0005, decay=1e-6, momentum=0.9, nesterov=True)
 model = Model(model_input, output_layer_1)
-adam_model = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+adam_model = optimizers.RMSprop(lr=0.0002) #optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
 model.compile(loss='mae', optimizer=adam_model)
 print(model.summary())
 
@@ -210,7 +213,7 @@ if args.rl and 'f' in args.feature:
     min_loss = 99999
     X_train_ori, X_test_ori = X_train, X_test
     f_controller =  controller.visual_controller(facet_dim)
-    adam_controller = optimizers.Adam(lr=0.00001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+    adam_controller = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
     f_controller.compile(loss=controller.my_loss, optimizer=adam_controller)
 
     facet_train = X_train_ori[-1]
@@ -228,7 +231,7 @@ if args.rl and 'f' in args.feature:
             facet_mask_train = []
             facet_controller_train_y_part = []
             for k in range(facet_train_mask_p.shape[0]):
-                if i == 0:
+                if True: #i==0
                     p_0 = 0.5
                 else:
                     p_0 = facet_train_mask_p[k, 0]
@@ -297,9 +300,10 @@ if args.rl and 'f' in args.feature:
     X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
 
 # Final evaluation of the model
-f_controller.load_weights('../weights/controller.h5')
-model.load_weights("../weights/rl_model.h5")       
+f_controller.load_weights('../weights/controller_bp.h5')
+model.load_weights("../weights/rl_model_bp.h5")       
 #model.load_weights(weights_path)
+X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
 mae = model.evaluate(X_test, y_test, verbose=0)
 predictions = model.predict(X_test)
 predictions = predictions.reshape(-1,)
@@ -322,4 +326,5 @@ print "f_score: ", f_score
 print "acc_7: ", acc_7
 #print "acc_5: ", acc_5
 print "acc_2: ", acc_2
+
 
