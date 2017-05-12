@@ -30,7 +30,7 @@ class FC_Model():
         self.visual_hidden_size = visual_hidden_size
         self.text_hidden_size = text_hidden_size
         self.acc_hidden_size = acc_hidden_size
-        self.save = 'fclstm.'+'_'.join(str(self.nlayers),str(self.dropout),str(self.batch_size),str(self.lr),str(self.num_epochs))+'.result'
+        self.save = 'fclstm.'+'_'.join([str(self.nlayers),str(self.dropout),str(self.batch_size),str(self.lr),str(self.num_epochs)])+'.result'
         self.embedding_train, self.facet_train, self.covarep_train, self.y_train, self.embedding_valid, self.facet_valid, self.covarep_valid,self.y_valid,self.embedding_test,self.facet_test,self.covarep_test,self.y_test = self.load_data()
         self.criterion = nn.L1Loss()
         self.model = FCLSTM( self.embedding_train.size(1),  self.embedding_train.size(2),  self.facet_train.size(2),  self.covarep_train.size(2),
@@ -65,7 +65,7 @@ class FC_Model():
             total_loss += loss.data
             optimizer.step()
             if i % self.log_interval == 0 and i > 0:
-                cur_loss = total_loss[0] / args.log_interval
+                cur_loss = total_loss[0] / self.log_interval
                 elapsed = time.time() - start_time
                 print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.4f} | ms/batch {:5.2f} | '
                       'loss {:5.2f}'.format(
@@ -106,7 +106,7 @@ class FC_Model():
             total_loss += loss.data
             acc += acc_2
         return [total_loss[0] / iterations, acc / iterations]
-    
+
     def reset(self):
         self.model = FCLSTM( self.embedding_train.size(1),  self.embedding_train.size(2),  self.facet_train.size(2),  self.covarep_train.size(2),
                              self.text_hidden_size,  self.visual_hidden_size, self.acc_hidden_size, self.batch_size, self.nlayers, self.dropout)
