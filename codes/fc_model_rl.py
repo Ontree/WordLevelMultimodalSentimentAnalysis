@@ -85,8 +85,8 @@ class FC_Model():
             output = self.model(input)
             loss = self.criterion(target, output)
             total_loss += loss.data
-            output_data = output.data.numpy()
-            target_data = target.data.numpy()
+            output_data = output.data.cpu().numpy()
+            target_data = target.data.cpu().numpy()
             acc_2 = sum((output_data < 0) == (target_data < 0)) / float(len(output_data))
             acc += acc_2
         return [total_loss[0] / test_iterations, acc / test_iterations]
@@ -101,8 +101,8 @@ class FC_Model():
                                       evaluation=True)
             output = self.model(input)
             loss = self.criterion(target, output)
-            output_data = output.data.numpy()
-            target_data = target.data.numpy()
+            output_data = output.data.cpu().numpy()
+            target_data = target.data.cpu().numpy()
             acc_2 = sum((output_data < 0) == (target_data < 0)) / float(len(output_data))
             total_loss += loss.data
             acc += acc_2
