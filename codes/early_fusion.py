@@ -30,6 +30,7 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
 sess = tf.Session(config=config)
 K.set_session(sess)
+#K.get_session().run(tf.global_variables_initializer())
 K.get_session().run(tf.initialize_all_variables())
 
 
@@ -90,7 +91,7 @@ facet_test = facet_test / facet_train_max
 
 
 weights_folder_path = '../weights/'
-weights_path = weights_folder_path + ''.join(sorted(args.feature)) + ("_attention" if args.attention else "") +  feature_str +".h5"
+weights_path = weights_folder_path + ''.join(sorted(args.feature)) + ("_attention" if args.attention else "") + ("_conv" if args.convolution else "") + feature_str +".h5"
 
 
 if args.pretrain:
@@ -168,6 +169,7 @@ model.compile(loss='mae', optimizer=adam)
 print(model.summary())
 model.fit(X_train, y_train, validation_split=val_split, epochs=args.train_epoch, batch_size=args.batch_size, callbacks=callbacks)
 model.load_weights(weights_path)
+print (weights_path)
 
 # Final evaluation of the model
 # model.load_weights(weights_path)
