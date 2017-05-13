@@ -24,7 +24,7 @@ class FC_Model():
         self.dropout = 0.5
         self.batch_size = 20
         self.lr = 0.0005
-        self.num_epochs = 200
+        self.num_epochs = 1
         self.clip = 0.25
         self.log_interval = 5
         self.visual_hidden_size = visual_hidden_size
@@ -74,13 +74,14 @@ class FC_Model():
                 total_loss = 0
                 start_time = time.time()
 
-    def test(self):
+    def test(self,facet_test):
+        self.facet_test = torch.from_numpy(facet_test).float()
         test_iterations = int(floor(len(self.embedding_test) / self.batch_size))
         self.model.eval()
         total_loss = 0
         acc = 0
         for i in xrange(test_iterations):
-            input, target = self.get_batch(self.embedding_test, self.facet_test, self.covarep_test, self.y_test, i, batch_size, evaluation=True)
+            input, target = self.get_batch(self.embedding_test, self.facet_test, self.covarep_test, self.y_test, i, self.batch_size, evaluation=True)
             output = self.model(input)
             loss = self.criterion(target, output)
             total_loss += loss.data
@@ -96,7 +97,7 @@ class FC_Model():
         total_loss = 0
         acc = 0
         for i in xrange(iterations):
-            input, target = self.get_batch(self.embedding_valid, self.facet_valid,self.covarep_valid, self.y_valid, i, batch_size,
+            input, target = self.get_batch(self.embedding_valid, self.facet_valid,self.covarep_valid, self.y_valid, i, self.batch_size,
                                       evaluation=True)
             output = self.model(input)
             loss = self.criterion(target, output)
@@ -118,9 +119,17 @@ class FC_Model():
     def load_weight(self,path):
         with open(path, 'rb') as f:
             self.model = torch.load(f)
-    def fit(self):
+    def fit(self,mae_weights_path,acc_weights_path,facet_train_ori):
+
+        facet_train = facet_train_ori[:-self.valid_size]
+        facet_valid = facet_train_ori[-self.valid_size:]
+        facet_train = torch.from_numpy(facet_train)
+        facet_valid = torch.from_numpy(facet_valid)
+        self.facet_train = facet_train
+        self.facet_valid = facet_valid
         history = []
         best_val_loss = None
+        best_acc = None
         for epoch in range(1, self.num_epochs + 1):
             epoch_start_time = time.time()
             train_iterations = int(floor(len(self.embedding_train) / self.batch_size))
@@ -129,6 +138,7 @@ class FC_Model():
             record = self.evaluate(valid_iterations)
             history.append(record)
             val_loss = record[0]
+            acc = record[1]
             print('-' * 89)
             print(
             '| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f}'.format(epoch, (time.time() - epoch_start_time),
@@ -136,9 +146,13 @@ class FC_Model():
             print('-' * 89)
             # Save the model if the validation loss is the best we've seen so far.
             if not best_val_loss or val_loss < best_val_loss:
-                with open(self.save, 'wb') as f:
+                with open(mae_weights_path, 'wb') as f:
                     torch.save(self.model, f)
                 best_val_loss = val_loss
+            if not best_acc or acc > best_acc:
+                with open(acc_weights_path,'wb') as f:
+                    torch.save(self.model,f)
+                best_acc = acc
             print 'record:'
             print record
         return history
@@ -149,9 +163,6 @@ class FC_Model():
         embedding_vecor_length = 300  # fixed. use glove 300d
         max_segment_len = 115  # 115                   # fixed for MOSI. The max length of a segment in MOSI dataset is 114
         end_to_end = True  # fixed
-        text_hidden_size = 64
-        visual_hidden_size = 8
-        acc_hidden_size = 8
         word_embedding = loader.load_word_embedding()
         train, test = loader.load_word_level_features(max_segment_len, tr_split)
         feature_str = ''
@@ -194,22 +205,22 @@ class FC_Model():
                 embedding_test[i][j] = word_embedding[text_test[i][j]]
 
         data_size = embedding_train.shape[0]
-        valid_size = int(val_split * data_size)
-        embedding_valid = embedding_train[-valid_size:]
+        self.valid_size = int(val_split * data_size)
+        embedding_valid = embedding_train[-self.valid_size:]
         embedding_valid = torch.from_numpy(embedding_valid)
-        facet_valid = facet_train[-valid_size:]
+        facet_valid = facet_train[-self.valid_size:]
         facet_valid = torch.from_numpy(facet_valid)
-        covarep_valid = covarep_train[-valid_size:]
+        covarep_valid = covarep_train[-self.valid_size:]
         covarep_valid = torch.from_numpy(covarep_valid)
-        embedding_train = embedding_train[:-valid_size]
+        embedding_train = embedding_train[:-self.valid_size]
         embedding_train = torch.from_numpy(embedding_train)
-        facet_train = facet_train[:-valid_size]
+        facet_train = facet_train[:-self.valid_size]
         facet_train = torch.from_numpy(facet_train)
-        covarep_train = covarep_train[:-valid_size]
+        covarep_train = covarep_train[:-self.valid_size]
         covarep_train = torch.from_numpy(covarep_train)
-        y_valid = y_train[-valid_size:]
+        y_valid = y_train[-self.valid_size:]
         y_valid = torch.from_numpy(y_valid).float()
-        y_train = y_train[:-valid_size]
+        y_train = y_train[:-self.valid_size]
         y_train = torch.from_numpy(y_train).float()
         embedding_test = torch.from_numpy(embedding_test).float()
         facet_test = torch.from_numpy(facet_test).float()
