@@ -13,9 +13,10 @@ class FCLSTM(nn.Module):
         self.drop = nn.Dropout(dropout)
         self.decoder = nn.Linear(text_hidden_size+visual_hidden_size+acc_hidden_size, 1)
         self.nlayers = nlayers
-        self.TLSTM = nn.LSTM(text_size+visual_hidden_size+acc_hidden_size, text_hidden_size, nlayers, dropout = dropout, batch_first = True)
-        self.VLSTM = nn.LSTM(visual_size+text_hidden_size+acc_hidden_size, visual_hidden_size, nlayers, dropout=dropout, batch_first = True)
-        self.ALSTM = nn.LSTM(acc_size+text_hidden_size+visual_hidden_size, acc_hidden_size, nlayers, dropout=dropout, batch_first = True)
+        self.TLSTM = nn.LSTM(text_size+visual_hidden_size+acc_hidden_size, text_hidden_size, nlayers, dropout = dropout, batch_first = True,bidirectional=True)
+        self.VLSTM = nn.LSTM(visual_size+text_hidden_size+acc_hidden_size, visual_hidden_size, nlayers, dropout=dropout, batch_first = True,bidirectional=True)
+        self.ALSTM = nn.LSTM(acc_size+text_hidden_size+visual_hidden_size, acc_hidden_size, nlayers, dropout=dropout, batch_first = True,bidirectional=True)
+        self.bidirectional = True
         self.init_weights()
     def xavier_normal(self, tensor, gain=1):
         if isinstance(tensor, Variable):
@@ -76,6 +77,10 @@ class FCLSTM(nn.Module):
         return output
     def init_hidden(self,batch_size,hidden_size):
         weight = next(self.parameters()).data
-        return (Variable(weight.new(self.nlayers, batch_size, hidden_size).zero_()),
-                    Variable(weight.new(self.nlayers, batch_size, hidden_size).zero_()))
+        if self.bidirectional:
+            par = 2
+        else:
+            par = 1
+        return (Variable(weight.new(par*self.nlayers, batch_size, hidden_size).zero_()),
+                    Variable(weight.new(par*self.nlayers, batch_size, hidden_size).zero_()))
 
