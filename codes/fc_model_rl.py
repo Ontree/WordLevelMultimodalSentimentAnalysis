@@ -24,7 +24,7 @@ class FC_Model():
         self.dropout = 0.5
         self.batch_size = 20
         self.lr = 0.0005
-        self.num_epochs = 1
+        self.num_epochs = 200
         self.clip = 0.25
         self.log_interval = 5
         self.visual_hidden_size = visual_hidden_size
@@ -85,8 +85,8 @@ class FC_Model():
             output = self.model(input)
             loss = self.criterion(target, output)
             total_loss += loss.data
-            output_data = output.data.numpy()
-            target_data = target.data.numpy()
+            output_data = output.data.cpu().numpy()
+            target_data = target.data.cpu().numpy()
             acc_2 = sum((output_data < 0) == (target_data < 0)) / float(len(output_data))
             acc += acc_2
         return [total_loss[0] / test_iterations, acc / test_iterations]
@@ -101,8 +101,8 @@ class FC_Model():
                                       evaluation=True)
             output = self.model(input)
             loss = self.criterion(target, output)
-            output_data = output.data.numpy()
-            target_data = target.data.numpy()
+            output_data = output.data.cpu().numpy()
+            target_data = target.data.cpu().numpy()
             acc_2 = sum((output_data < 0) == (target_data < 0)) / float(len(output_data))
             total_loss += loss.data
             acc += acc_2

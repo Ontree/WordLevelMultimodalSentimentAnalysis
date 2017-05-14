@@ -1,10 +1,10 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 import tools.data_loader as loader
 import numpy as np
 np.random.seed(0)
-import tensorflow as tf
-tf.set_random_seed(0)
+from fc_model_rl import FC_Model
+#import tensorflow as tf
 from keras.models import Sequential
 from keras.models import Model
 from keras.layers import Input, Flatten, Activation, Permute, RepeatVector, Lambda
@@ -21,7 +21,6 @@ from keras.regularizers import l2
 from keras.layers import merge
 from keras.layers.normalization import BatchNormalization
 from keras.optimizers import SGD
-from fc_model_rl import FC_Model
 import keras.backend as K
 import argparse
 from keras.layers.wrappers import TimeDistributed
@@ -60,11 +59,11 @@ def reset_weights(model):
             #print(layer, "not reinitialized")
 
 
-config = tf.ConfigProto()
-config.gpu_options.allow_growth=True
-sess = tf.Session(config=config)
-K.set_session(sess)
-K.get_session().run(tf.initialize_all_variables())
+#config = tf.ConfigProto()
+#config.gpu_options.allow_growth=True
+#sess = tf.Session(config=config)
+#K.set_session(sess)
+#K.get_session().run(tf.initialize_all_variables())
 
 
 parser = argparse.ArgumentParser(description='')
@@ -98,7 +97,7 @@ train, test = loader.load_word_level_features(max_segment_len, tr_split)
 
 feature_str = ''
 if args.feature_selection:
-    with open('/usr0/home/minghai1/multimodal/preprocess/fs_mask.pkl') as f:
+    with open('/usr0/home/senw1/deep_learning/WordLevelMultimodalSentimentAnalysis/codes/fs_mask.pkl') as f:
         [covarep_ix, facet_ix] = pickle.load(f)
     facet_train = train['facet'][:,:,facet_ix]
     facet_test = test['facet'][:,:,facet_ix]
@@ -129,7 +128,7 @@ facet_test = facet_test / facet_train_max
 
 
 weights_folder_path = '../weights/'
-weights_path = weights_folder_path + ''.join(sorted(args.feature)) + ("_attention" if args.attention else "") +  feature_str +"-rl.h5"
+weights_path = weights_folder_path + ''.join(sorted(args.feature)) + ("_attention" if args.attention else "") +  feature_str +"-rl_1.h5"
 
 
 if args.pretrain:
@@ -230,7 +229,7 @@ if args.rl and 'f' in args.feature:
             facet_mask_train = []
             facet_controller_train_y_part = []
             for k in range(facet_train_mask_p.shape[0]):
-                if True: #i==0
+                if i==0:
                     p_0 = 0.5
                 else:
                     p_0 = facet_train_mask_p[k, 0]
@@ -254,35 +253,34 @@ if args.rl and 'f' in args.feature:
             acc_weights_path = weights_path + '_acc'
             history = model.fit(mae_weights_path, acc_weights_path,X_train[-1])
             history = np.asarray(history)
-            #history = model.fit(X_train, y_train, validation_split=val_split, nb_epoch=3, batch_size=args.batch_size, callbacks=callbacks)
 
             loss = min(history[:,0])
             acc = max(history[:,1])
-            if min_loss > loss:
-                min_loss = loss
-                model.load_weights(mae_weights_path)
-                model.save_weights("../weights/rl_model_mae.h5")
-                f_controller.save_weights('../weights/controller_mae.h5')
-                X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
-                record = model.test(X_test[-1])
-                mae = record[0]
-                with open('mae.txt', 'a') as f:
-                    f.write(str(loss) + '  ' + str(mae)+'\n')
-            if max_acc < acc:
+            min_loss = loss
+            model.load_weight(mae_weights_path)
+            model.save_weight("../weights/rl_model_mae_1.h5")
+            f_controller.save_weights('../weights/controller_mae_1.h5')
+            X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
+            record = model.test(X_test[-1])
+            mae = record[0]
+            with open('fc_mae_1.txt', 'a') as f:
+                f.write(str(loss) + '  ' + str(mae)+'\n')
+            #if max_acc < acc:
+            if True:
                 max_acc = acc
-                model.load_weights(acc_weights_path)
-                model.save_weights("../weights/rl_model_acc.h5")
-                f_controller.save_weights('../weights/controller_acc.h5')
+                model.load_weight(acc_weights_path)
+                model.save_weight("../weights/rl_model_acc_1.h5")
+                f_controller.save_weights('../weights/controller_acc_1.h5')
                 X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
                 record = model.test(X_test[-1])
                 test_acc = record[1]
-                with open('acc.txt', 'a') as f:
+                with open('fc_acc_1.txt', 'a') as f:
                     f.write(str(acc) + '  ' + str(test_acc)+'\n')
             sample_losses.append(loss)
             if base_loss == -999:
                 base_loss = loss
             facet_controller_train_y_part = np.array(facet_controller_train_y_part)
-            facet_controller_train_y_part = facet_controller_train_y_part * (loss - base_loss)
+            facet_controller_train_y_part = facet_controller_train_y_part * (-np.e**(loss - base_loss))
             facet_controller_train_y.append(facet_controller_train_y_part)
         sample_loss_mean = np.mean(sample_losses)
         base_loss = 0.2*base_loss + (1-0.2)*sample_loss_mean
