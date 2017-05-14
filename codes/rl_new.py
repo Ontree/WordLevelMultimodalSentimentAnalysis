@@ -231,7 +231,7 @@ if args.rl and 'f' in args.feature:
             facet_mask_train = []
             facet_controller_train_y_part = []
             for k in range(facet_train_mask_p.shape[0]):
-                if True: #i==0
+                if i==0:
                     p_0 = 0.5
                 else:
                     p_0 = facet_train_mask_p[k, 0]
@@ -269,7 +269,8 @@ if args.rl and 'f' in args.feature:
             if base_loss == -999:
                 base_loss = loss
             facet_controller_train_y_part = np.array(facet_controller_train_y_part)
-            facet_controller_train_y_part = facet_controller_train_y_part * (loss - base_loss)
+            #facet_controller_train_y_part = facet_controller_train_y_part * (loss - base_loss)
+            facet_controller_train_y_part = facet_controller_train_y_part * (-np.e**(base_loss-loss))
             facet_controller_train_y.append(facet_controller_train_y_part)
         sample_loss_mean = np.mean(sample_losses)
         base_loss = 0.2*base_loss + (1-0.2)*sample_loss_mean
@@ -300,8 +301,8 @@ if args.rl and 'f' in args.feature:
     X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
 
 # Final evaluation of the model
-f_controller.load_weights('../weights/controller_bp.h5')
-model.load_weights("../weights/rl_model_bp.h5")       
+f_controller.load_weights('../weights/controller.h5')
+model.load_weights("../weights/rl_model.h5")       
 #model.load_weights(weights_path)
 X_test = get_rl_x_test(X_test_ori, f_controller, max_segment_len)
 mae = model.evaluate(X_test, y_test, verbose=0)
